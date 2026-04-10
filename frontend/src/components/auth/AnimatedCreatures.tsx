@@ -50,7 +50,7 @@ export default function AnimatedCreatures({
             animate={{
               y: mood === "happy" ? [0, -10, 0] : 0,
               rotate: isPasswordVisible ? 180 : 0,
-              scale: mood === "error" ? 0.95 : 1,
+              scale: 1,
             }}
             transition={{ duration: 0.6, delay: i * 0.1 }}
             className={`bg-gradient-to-br ${c.color} ${c.size} rounded-3xl flex items-center justify-center shadow-xl`}
