@@ -1,9 +1,10 @@
 "use client";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/shared/AppShell';
 import { Panel, PanelHeader } from '@/components/shared/Panel';
 import { studentApi } from '@/lib/api';
@@ -37,7 +38,14 @@ interface AssignmentItem {
 }
 
 export default function StudentAssignmentsPage() {
-  const params = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    const url = new URL(window.location.href);
+    setSelectedId(url.searchParams.get("id"));
+  }
+}, []);
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [selected, setSelected] = useState<AssignmentItem | null>(null);
   const [fileUrl, setFileUrl] = useState('');
@@ -55,11 +63,13 @@ export default function StudentAssignmentsPage() {
   };
 
   useEffect(() => {
-    let active = true;
-    const selectedId = params.get('id');
+  if (typeof window === "undefined") return;
 
-    studentApi
-      .getAssignments()
+  let active = true;
+  const selectedIdValue = selectedId;
+
+  studentApi
+    .getAssignments()
       .then(async (res) => {
         if (!active) return;
         setAssignments(res.data.data);
@@ -80,7 +90,7 @@ export default function StudentAssignmentsPage() {
     return () => {
       active = false;
     };
-  }, [params]);
+  }, [selectedId]);
 
   const canSubmit =
     selected &&
