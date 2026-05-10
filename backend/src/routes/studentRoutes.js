@@ -1,4 +1,6 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const auth = require("../middleware/auth");
 const roleGuard = require("../middleware/roleGuard");
 const { query, withTransaction } = require("../db");
@@ -12,8 +14,34 @@ const {
 } = require("../db/helpers");
 
 const router = express.Router();
+const uploadsRoot = path.join(__dirname, "..", "..", "uploads", "submissions");
 
 router.use(auth, roleGuard("student"));
+
+if (!fs.existsSync(uploadsRoot)) {
+  fs.mkdirSync(uploadsRoot, { recursive: true });
+}
+
+function sanitizeFileName(name = "document") {
+  return String(name).replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function persistUploadedFile(uploadedFile) {
+  if (!uploadedFile?.base64 || !uploadedFile?.name) {
+    return null;
+  }
+
+  const fileBuffer = Buffer.from(uploadedFile.base64, "base64");
+  if (fileBuffer.length > 10 * 1024 * 1024) {
+    throw new Error("Uploaded file is too large. Please keep it under 10 MB.");
+  }
+
+  const safeName = sanitizeFileName(uploadedFile.name);
+  const storedFileName = `${Date.now()}-${randomUUID()}-${safeName}`;
+  const storedPath = path.join(uploadsRoot, storedFileName);
+  fs.writeFileSync(storedPath, fileBuffer);
+  return `/uploads/submissions/${storedFileName}`;
+}
 
 async function getStudentSubjects(userId) {
   return query(
@@ -520,7 +548,7 @@ router.get("/assignments", async (req, res, next) => {
 
 router.post("/assignments/:id/submit", async (req, res, next) => {
   try {
-    const { file_url = "", submitted_text = "", answers = {} } = req.body;
+    const { file_url = "", submitted_text = "", answers = {}, uploaded_file = null } = req.body;
     const student = await getStudentByUserId(req.user.id);
     const assignmentResult = await query(
       `
@@ -552,6 +580,11 @@ router.post("/assignments/:id/submit", async (req, res, next) => {
       return res.status(400).json({ success: false, message: "The due date has passed. Submission is closed." });
     }
 
+    let resolvedFileUrl = file_url || null;
+    if (uploaded_file?.base64 && uploaded_file?.name) {
+      resolvedFileUrl = persistUploadedFile(uploaded_file);
+    }
+
     let marks = null;
     if (assignment.type === "quiz") {
       const questions = await query(
@@ -580,7 +613,7 @@ router.post("/assignments/:id/submit", async (req, res, next) => {
         `,
         [
           assignment.submission_id,
-          file_url || null,
+          resolvedFileUrl,
           submitted_text || null,
           JSON.stringify(answers || {}),
           marks,

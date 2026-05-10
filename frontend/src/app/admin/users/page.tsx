@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { adminApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { adminApi } from '../../lib/api';
 
 interface ManagedUser {
   id: string;
@@ -37,6 +37,7 @@ interface LookupData {
   years: { id: string; year_number: number; academic_year: string; department_id: string }[];
   sections: { id: string; name: string; class_name: string; year_id: string; year_number: number; academic_year: string }[];
   subjects: { id: string; name: string; code: string; department_id: string; year_id: string; department_name: string; year_number: number; academic_year: string }[];
+  teachers: { id: string; user_id: string; department_id: string; designation: string; name: string; email: string }[];
   teacherAssignments: { id: string; teacher_id: string; subject_id: string; section_id: string; academic_year: string; subject_name: string; class_name: string; section_name: string }[];
   timetables: { id: string; teacher_assignment_id: string; day_of_week: string; start_time: string; end_time: string; room: string; subject_name: string; class_name: string; section_name: string; teacher_name: string }[];
 }
@@ -78,6 +79,13 @@ const initialTimetableForm = {
   room: '',
 };
 
+const initialTeacherAssignmentForm = {
+  teacher_id: '',
+  subject_id: '',
+  section_id: '',
+  academic_year: '2025-26',
+};
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [lookups, setLookups] = useState<LookupData | null>(null);
@@ -88,7 +96,8 @@ export default function AdminUsersPage() {
   const [sectionForm, setSectionForm] = useState(initialSectionForm);
   const [subjectForm, setSubjectForm] = useState(initialSubjectForm);
   const [timetableForm, setTimetableForm] = useState(initialTimetableForm);
-  const [assignmentDraft, setAssignmentDraft] = useState({ subject_id: '', section_id: '', academic_year: '2025-26' });
+  const [teacherAssignmentForm, setTeacherAssignmentForm] = useState(initialTeacherAssignmentForm);
+  const [userFormMode, setUserFormMode] = useState<'student' | 'teacher' | 'admin'>('student');
 
   const loadUsers = () => {
     adminApi.getUsers().then((res) => setUsers(res.data.data)).catch(console.error);
@@ -118,9 +127,8 @@ export default function AdminUsersPage() {
   );
 
   const resetForm = () => {
-    setForm(initialForm);
+    setForm({ ...initialForm, role: userFormMode });
     setEditingUserId(null);
-    setAssignmentDraft({ subject_id: '', section_id: '', academic_year: '2025-26' });
   };
 
   const submitForm = async (event: React.FormEvent) => {
@@ -128,9 +136,12 @@ export default function AdminUsersPage() {
 
     const payload = {
       ...form,
-      roll_number: form.role === 'student' ? form.roll_number : undefined,
-      section_id: form.role === 'student' ? form.section_id : undefined,
-      teaching_assignments: form.role === 'teacher' ? form.teaching_assignments : [],
+      role: userFormMode,
+      roll_number: userFormMode === 'student' ? form.roll_number : undefined,
+      section_id: userFormMode === 'student' ? form.section_id : undefined,
+      department_id: userFormMode === 'teacher' ? form.department_id : undefined,
+      designation: userFormMode === 'teacher' ? form.designation : undefined,
+      teaching_assignments: userFormMode === 'teacher' ? form.teaching_assignments : [],
       password: 'password123',
     };
 
@@ -146,6 +157,7 @@ export default function AdminUsersPage() {
 
   const startEdit = (user: ManagedUser) => {
     setEditingUserId(user.id);
+    setUserFormMode(user.role);
     setForm({
       name: user.name,
       email: user.email,
@@ -166,12 +178,6 @@ export default function AdminUsersPage() {
   const selectedSection = lookups?.sections.find((item) => item.id === form.section_id);
   const filteredYears = (lookups?.years ?? []).filter((year) => !sectionForm.department_id || year.department_id === sectionForm.department_id);
   const filteredSubjectYears = (lookups?.years ?? []).filter((year) => !subjectForm.department_id || year.department_id === subjectForm.department_id);
-  const filteredSubjects = (lookups?.subjects ?? []).filter((subject) => {
-    if (!form.department_id) return true;
-    const department = lookups?.departments.find((item) => item.id === form.department_id);
-    return subject.department_name === department?.name;
-  });
-
   return (
     <AppShell
       role="admin"
@@ -182,27 +188,43 @@ export default function AdminUsersPage() {
         <div className="space-y-6">
           <Panel>
             <PanelHeader
-              title={editingUserId ? 'Update User' : 'Create User'}
-              subtitle="Create students by class/section or teachers with one or more subject assignments."
+              title={editingUserId ? `Update ${userFormMode}` : userFormMode === 'student' ? 'Add Student' : userFormMode === 'teacher' ? 'Add Teacher' : 'Add Admin'}
+              subtitle="Use dedicated admin flows for student details, teacher details, assignments, and timetable."
             />
             <form onSubmit={submitForm} className="space-y-4 p-6">
+            <div className="grid gap-3 md:grid-cols-3">
+              {[
+                { id: 'student', label: 'Student Details' },
+                { id: 'teacher', label: 'Teacher Details' },
+                { id: 'admin', label: 'Admin Details' },
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    setUserFormMode(option.id as 'student' | 'teacher' | 'admin');
+                    setEditingUserId(null);
+                    setForm((prev) => ({
+                      ...initialForm,
+                      role: option.id as 'student' | 'teacher' | 'admin',
+                      department_id: prev.department_id,
+                    }));
+                  }}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                    userFormMode === option.id
+                      ? 'border-primary bg-indigo-50 text-primary dark:bg-indigo-500/10'
+                      : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <Input label="Full Name" value={form.name} onChange={(value) => setForm((prev) => ({ ...prev, name: value }))} />
             <Input label="Email" value={form.email} onChange={(value) => setForm((prev) => ({ ...prev, email: value }))} />
             <Input label="Phone" value={form.phone} onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))} />
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Role</label>
-              <select
-                value={form.role}
-                onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value as 'admin' | 'teacher' | 'student' }))}
-                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm outline-none focus:border-primary"
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
 
-            {form.role === 'student' ? (
+            {userFormMode === 'student' ? (
               <>
                 <Input label="Roll Number" value={form.roll_number} onChange={(value) => setForm((prev) => ({ ...prev, roll_number: value }))} />
                 <div>
@@ -228,7 +250,7 @@ export default function AdminUsersPage() {
               </>
             ) : null}
 
-            {form.role === 'teacher' ? (
+            {userFormMode === 'teacher' ? (
               <>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Department</label>
@@ -244,69 +266,8 @@ export default function AdminUsersPage() {
                   </select>
                 </div>
                 <Input label="Designation" value={form.designation} onChange={(value) => setForm((prev) => ({ ...prev, designation: value }))} />
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-4">
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">Assign Subjects to Classes</p>
-                  <div className="mt-4 space-y-3">
-                    <select
-                      value={assignmentDraft.subject_id}
-                      onChange={(event) => setAssignmentDraft((prev) => ({ ...prev, subject_id: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm outline-none focus:border-primary"
-                    >
-                      <option value="">Select subject</option>
-                      {filteredSubjects.map((subject) => (
-                        <option key={subject.id} value={subject.id}>
-                          {subject.name} ({subject.code}) - Year {subject.year_number}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={assignmentDraft.section_id}
-                      onChange={(event) => setAssignmentDraft((prev) => ({ ...prev, section_id: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm outline-none focus:border-primary"
-                    >
-                      <option value="">Select class / section</option>
-                      {(lookups?.sections ?? []).map((section) => (
-                        <option key={section.id} value={section.id}>
-                          {section.class_name} - Section {section.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Input label="Academic Year" value={assignmentDraft.academic_year} onChange={(value) => setAssignmentDraft((prev) => ({ ...prev, academic_year: value }))} />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!assignmentDraft.subject_id || !assignmentDraft.section_id) return;
-                        setForm((prev) => ({
-                          ...prev,
-                          teaching_assignments: [...prev.teaching_assignments, assignmentDraft],
-                        }));
-                        setAssignmentDraft({ subject_id: '', section_id: '', academic_year: assignmentDraft.academic_year });
-                      }}
-                      className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200"
-                    >
-                      Add Teaching Assignment
-                    </button>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {form.teaching_assignments.map((assignment, index) => {
-                      const subject = lookups?.subjects.find((item) => item.id === assignment.subject_id);
-                      const section = lookups?.sections.find((item) => item.id === assignment.section_id);
-                      return (
-                        <div key={`${assignment.subject_id}-${assignment.section_id}-${index}`} className="flex items-center justify-between rounded-2xl bg-white dark:bg-slate-900 px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
-                          <span>
-                            {subject?.name} {'->'} {section?.class_name} Section {section?.name} ({assignment.academic_year})
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, teaching_assignments: prev.teaching_assignments.filter((_, currentIndex) => currentIndex !== index) }))}
-                            className="text-red-600"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-4 text-sm text-slate-600 dark:text-slate-300">
+                  Teacher creation is separate from class assignment now. Use the “Assign Teacher to Class” panel below after saving the teacher profile.
                 </div>
               </>
             ) : null}
@@ -324,6 +285,89 @@ export default function AdminUsersPage() {
               </button>
             </div>
             </form>
+          </Panel>
+
+          <Panel>
+            <PanelHeader
+              title="Assign Teacher to Class"
+              subtitle="Create a faculty-subject-section mapping separately so timetables and student views stay clean."
+            />
+            <div className="space-y-4 p-6">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Teacher</label>
+                <select
+                  value={teacherAssignmentForm.teacher_id}
+                  onChange={(event) => setTeacherAssignmentForm((prev) => ({ ...prev, teacher_id: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-primary"
+                >
+                  <option value="">Select teacher</option>
+                  {(lookups?.teachers ?? []).map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name} ({teacher.designation || 'Faculty'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Subject</label>
+                <select
+                  value={teacherAssignmentForm.subject_id}
+                  onChange={(event) => setTeacherAssignmentForm((prev) => ({ ...prev, subject_id: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-primary"
+                >
+                  <option value="">Select subject</option>
+                  {(lookups?.subjects ?? []).map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name} ({subject.code}) - Year {subject.year_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Class / Section</label>
+                <select
+                  value={teacherAssignmentForm.section_id}
+                  onChange={(event) => setTeacherAssignmentForm((prev) => ({ ...prev, section_id: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-primary"
+                >
+                  <option value="">Select class / section</option>
+                  {(lookups?.sections ?? []).map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.class_name} - Section {section.name} - Year {section.year_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Input label="Academic Year" value={teacherAssignmentForm.academic_year} onChange={(value) => setTeacherAssignmentForm((prev) => ({ ...prev, academic_year: value }))} />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await adminApi.createTeacherAssignment(teacherAssignmentForm);
+                    setTeacherAssignmentForm(initialTeacherAssignmentForm);
+                    await loadLookups();
+                    await loadUsers();
+                  }}
+                  className="flex-1 rounded-2xl bg-primary px-4 py-3 font-semibold text-white"
+                >
+                  Save Assignment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeacherAssignmentForm(initialTeacherAssignmentForm)}
+                  className="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3 font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="space-y-2 rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-4 text-sm text-slate-600 dark:text-slate-300">
+                {(lookups?.teacherAssignments ?? []).slice(0, 5).map((assignment) => (
+                  <p key={assignment.id}>
+                    {assignment.subject_name} {'->'} {assignment.class_name} Section {assignment.section_name} ({assignment.academic_year})
+                  </p>
+                ))}
+              </div>
+            </div>
           </Panel>
 
           <Panel>

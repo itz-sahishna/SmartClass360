@@ -122,7 +122,7 @@ async function getRequests() {
 
 router.get("/lookups", async (req, res, next) => {
   try {
-    const [departments, years, sections, subjects, teacherAssignments, timetables] = await Promise.all([
+    const [departments, years, sections, subjects, teachers, teacherAssignments, timetables] = await Promise.all([
       query(`SELECT id, name FROM departments ORDER BY name`),
       query(`SELECT id, year_number, academic_year, department_id FROM academic_years ORDER BY academic_year DESC, year_number`),
       query(`
@@ -137,6 +137,12 @@ router.get("/lookups", async (req, res, next) => {
         JOIN departments d ON d.id = sub.department_id
         JOIN academic_years ay ON ay.id = sub.year_id
         ORDER BY sub.name
+      `),
+      query(`
+        SELECT t.id, t.user_id, t.department_id, t.designation, u.name, u.email
+        FROM teachers t
+        JOIN users u ON u.id = t.user_id
+        ORDER BY u.name
       `),
       query(`
         SELECT ta.id,
@@ -180,6 +186,7 @@ router.get("/lookups", async (req, res, next) => {
         years: years.rows,
         sections: sections.rows,
         subjects: subjects.rows,
+        teachers: teachers.rows,
         teacherAssignments: teacherAssignments.rows,
         timetables: timetables.rows,
       },
@@ -247,6 +254,31 @@ router.post("/timetables", async (req, res, next) => {
         RETURNING *
       `,
       [randomUUID(), teacher_assignment_id, day_of_week, start_time, end_time, room || null]
+    );
+
+    res.status(201).json({ success: true, data: created.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/teacher-assignments", async (req, res, next) => {
+  try {
+    const { teacher_id, subject_id, section_id, academic_year } = req.body;
+    if (!teacher_id || !subject_id || !section_id || !academic_year) {
+      return res.status(400).json({
+        success: false,
+        message: "teacher_id, subject_id, section_id, and academic_year are required.",
+      });
+    }
+
+    const created = await query(
+      `
+        INSERT INTO teacher_assignments (id, teacher_id, subject_id, section_id, academic_year)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+      `,
+      [randomUUID(), teacher_id, subject_id, section_id, academic_year]
     );
 
     res.status(201).json({ success: true, data: created.rows[0] });
