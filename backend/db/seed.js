@@ -25,6 +25,79 @@ function insert(table, rows, client) {
   return client.query(text, params);
 }
 
+function slug(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return Number(
+    (values.reduce((total, value) => total + Number(value || 0), 0) / values.length).toFixed(2)
+  );
+}
+
+function toFriendlyGrade(score) {
+  if (score >= 90) return "A+";
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  if (score >= 50) return "D";
+  return "F";
+}
+
+function getPerformanceBand(index) {
+  if (index < 5) return "good";
+  if (index < 15) return "average";
+  return "atrisk";
+}
+
+function statusForBand(band, subjectIndex, sessionIndex, studentIndex) {
+  const pivot = (studentIndex + subjectIndex + sessionIndex) % 10;
+  if (band === "good") {
+    return pivot < 8 ? "present" : "late";
+  }
+  if (band === "average") {
+    if (pivot < 6) return "present";
+    if (pivot < 8) return "late";
+    return "absent";
+  }
+  if (pivot < 4) return "present";
+  if (pivot < 6) return "late";
+  return "absent";
+}
+
+function scoreSeed(band, subjectIndex, studentIndex) {
+  const wobble = ((studentIndex + 1) * (subjectIndex + 3)) % 5;
+  if (band === "good") return 84 + wobble * 2;
+  if (band === "average") return 66 + wobble * 2;
+  return 46 + wobble * 2;
+}
+
+function subjectDescription(subjectName) {
+  if (subjectName.includes("Data Structures")) return "Core programming and problem-solving based on the JNTUH R22 structure.";
+  if (subjectName.includes("Java")) return "Object oriented programming, collections, exceptions, and file handling.";
+  if (subjectName.includes("Discrete")) return "Logic, relations, graphs, and combinatorics for computing.";
+  if (subjectName.includes("Computer Organization")) return "Instruction formats, memory, processor logic, and I/O organization.";
+  if (subjectName.includes("English")) return "Technical communication, presentations, and placement readiness.";
+  if (subjectName.includes("Database")) return "SQL, normalization, transactions, indexing, and PL/SQL.";
+  if (subjectName.includes("Operating Systems")) return "Processes, synchronization, memory management, and file systems.";
+  if (subjectName.includes("Algorithms")) return "Greedy, divide and conquer, dynamic programming, and complexity analysis.";
+  if (subjectName.includes("Networks")) return "OSI layers, routing, transport, and network applications.";
+  if (subjectName.includes("Software Engineering")) return "Requirement analysis, UML, testing, maintenance, and project planning.";
+  if (subjectName.includes("Signals")) return "Signal classification, transforms, and communication-system applications.";
+  if (subjectName.includes("Network Theory")) return "Circuit laws, theorems, transient analysis, and AC network models.";
+  if (subjectName.includes("Electronic Devices")) return "Diodes, BJTs, FETs, biasing, and amplifier basics.";
+  if (subjectName.includes("Digital Logic")) return "Boolean algebra, combinational logic, sequential circuits, and FSMs.";
+  return "Probability, random variables, and statistical methods for engineering.";
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash("password@123", 10);
   const schemaSql = fs.readFileSync(schemaPath, "utf8");
@@ -35,24 +108,153 @@ async function main() {
   ];
 
   const academicYears = [
-    { id: "y-cse-1", department_id: "d-cse", year_number: 1, academic_year: "2025-26" },
     { id: "y-cse-2", department_id: "d-cse", year_number: 2, academic_year: "2025-26" },
     { id: "y-cse-3", department_id: "d-cse", year_number: 3, academic_year: "2025-26" },
-    { id: "y-cse-4", department_id: "d-cse", year_number: 4, academic_year: "2025-26" },
-    { id: "y-ece-1", department_id: "d-ece", year_number: 1, academic_year: "2025-26" },
+    { id: "y-ece-2", department_id: "d-ece", year_number: 2, academic_year: "2025-26" },
   ];
 
-  const sections = [
-    { id: "sec-cse2-a", year_id: "y-cse-2", class_name: "B.Tech CSE", name: "A" },
-    { id: "sec-cse2-b", year_id: "y-cse-2", class_name: "B.Tech CSE", name: "B" },
-    { id: "sec-cse3-a", year_id: "y-cse-3", class_name: "B.Tech CSE", name: "A" },
-    { id: "sec-cse1-a", year_id: "y-cse-1", class_name: "B.Tech CSE", name: "A" },
-    { id: "sec-ece1-a", year_id: "y-ece-1", class_name: "B.Tech ECE", name: "A" },
+  const subjectGroups = {
+    cse2: [
+      { name: "Data Structures", code: "CS203", semester: "II-II", credits: 4 },
+      { name: "Object Oriented Programming through Java", code: "CS204", semester: "II-II", credits: 4 },
+      { name: "Discrete Mathematics", code: "MA203", semester: "II-II", credits: 4 },
+      { name: "Computer Organization", code: "CS205", semester: "II-II", credits: 3 },
+      { name: "Professional English", code: "HS202", semester: "II-II", credits: 2 },
+    ],
+    cse3: [
+      { name: "Database Management Systems", code: "CS301", semester: "III-I", credits: 4 },
+      { name: "Operating Systems", code: "CS302", semester: "III-I", credits: 4 },
+      { name: "Design and Analysis of Algorithms", code: "CS303", semester: "III-I", credits: 4 },
+      { name: "Computer Networks", code: "CS304", semester: "III-I", credits: 4 },
+      { name: "Software Engineering", code: "CS305", semester: "III-I", credits: 3 },
+    ],
+    ece2: [
+      { name: "Signals and Systems", code: "EC203", semester: "II-II", credits: 4 },
+      { name: "Network Theory", code: "EC204", semester: "II-II", credits: 4 },
+      { name: "Electronic Devices and Circuits", code: "EC205", semester: "II-II", credits: 4 },
+      { name: "Digital Logic Design", code: "EC206", semester: "II-II", credits: 3 },
+      { name: "Probability and Random Variables", code: "MA204", semester: "II-II", credits: 3 },
+    ],
+  };
+
+  const sectionConfigs = [
+    {
+      id: "sec-cse2-a",
+      year_id: "y-cse-2",
+      class_name: "B.Tech CSE",
+      name: "A",
+      programCode: "05",
+      admissionYear: "24",
+      rollStart: 1,
+      groupKey: "cse2",
+      departmentId: "d-cse",
+      label: "CSE II-A",
+    },
+    {
+      id: "sec-cse2-b",
+      year_id: "y-cse-2",
+      class_name: "B.Tech CSE",
+      name: "B",
+      programCode: "05",
+      admissionYear: "24",
+      rollStart: 21,
+      groupKey: "cse2",
+      departmentId: "d-cse",
+      label: "CSE II-B",
+    },
+    {
+      id: "sec-cse3-a",
+      year_id: "y-cse-3",
+      class_name: "B.Tech CSE",
+      name: "A",
+      programCode: "05",
+      admissionYear: "23",
+      rollStart: 41,
+      groupKey: "cse3",
+      departmentId: "d-cse",
+      label: "CSE III-A",
+    },
+    {
+      id: "sec-cse3-b",
+      year_id: "y-cse-3",
+      class_name: "B.Tech CSE",
+      name: "B",
+      programCode: "05",
+      admissionYear: "23",
+      rollStart: 61,
+      groupKey: "cse3",
+      departmentId: "d-cse",
+      label: "CSE III-B",
+    },
+    {
+      id: "sec-ece2-a",
+      year_id: "y-ece-2",
+      class_name: "B.Tech ECE",
+      name: "A",
+      programCode: "04",
+      admissionYear: "24",
+      rollStart: 1,
+      groupKey: "ece2",
+      departmentId: "d-ece",
+      label: "ECE II-A",
+    },
+    {
+      id: "sec-ece2-b",
+      year_id: "y-ece-2",
+      class_name: "B.Tech ECE",
+      name: "B",
+      programCode: "04",
+      admissionYear: "24",
+      rollStart: 21,
+      groupKey: "ece2",
+      departmentId: "d-ece",
+      label: "ECE II-B",
+    },
+  ];
+
+  const sections = sectionConfigs.map(({ id, year_id, class_name, name }) => ({
+    id,
+    year_id,
+    class_name,
+    name,
+  }));
+
+  const teacherRoster = [
+    { name: "Prof. M. Harish Reddy", email: "teacher@gmail.com", designation: "Assistant Professor", department_id: "d-cse", location: "CSE Block Room 304" },
+    { name: "Dr. P. Anusha", email: "p.anusha@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "CSE Block Room 207" },
+    { name: "Dr. K. Srinivas", email: "k.srinivas@smartclass360.edu", designation: "Associate Professor", department_id: "d-cse", location: "CSE Block Room 311" },
+    { name: "Ms. T. Niharika", email: "t.niharika@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "CSE Block Room 209" },
+    { name: "Mrs. S. Deepthi", email: "s.deepthi@smartclass360.edu", designation: "Senior Lecturer", department_id: "d-cse", location: "Humanities Block" },
+    { name: "Dr. V. Sandeep", email: "v.sandeep@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "CSE Block Room 306" },
+    { name: "Prof. J. Madhavi", email: "j.madhavi@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "CSE Block Room 210" },
+    { name: "Mr. R. Chaitanya", email: "r.chaitanya@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "Maths Wing" },
+    { name: "Dr. A. Naveen Kumar", email: "a.naveen@smartclass360.edu", designation: "Associate Professor", department_id: "d-cse", location: "CSE Block Room 319" },
+    { name: "Ms. P. Bhavani", email: "p.bhavani@smartclass360.edu", designation: "Senior Lecturer", department_id: "d-cse", location: "Language Lab" },
+    { name: "Dr. Y. Praveen", email: "y.praveen@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "DBMS Lab" },
+    { name: "Mrs. M. Soujanya", email: "m.soujanya@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "OS Lab" },
+    { name: "Prof. N. Rajashekar", email: "n.rajashekar@smartclass360.edu", designation: "Associate Professor", department_id: "d-cse", location: "Algorithms Room" },
+    { name: "Mr. D. Kiran", email: "d.kiran@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "Networks Lab" },
+    { name: "Ms. G. Meghana", email: "g.meghana@smartclass360.edu", designation: "Senior Lecturer", department_id: "d-cse", location: "Project Hall" },
+    { name: "Dr. P. Ravali", email: "p.ravali@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "DBMS Lab 2" },
+    { name: "Mr. T. Harsha", email: "t.harsha@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "Systems Lab" },
+    { name: "Mrs. B. Sindhu", email: "b.sindhu@smartclass360.edu", designation: "Assistant Professor", department_id: "d-cse", location: "Algorithms Lab" },
+    { name: "Dr. C. Mahender", email: "c.mahender@smartclass360.edu", designation: "Associate Professor", department_id: "d-cse", location: "Networks Hall" },
+    { name: "Ms. L. Swathi", email: "l.swathi@smartclass360.edu", designation: "Senior Lecturer", department_id: "d-cse", location: "Placement Block" },
+    { name: "Dr. N. Rajeshwari", email: "n.rajeshwari@smartclass360.edu", designation: "Associate Professor", department_id: "d-ece", location: "ECE Block Room 101" },
+    { name: "Prof. M. Venkatesh", email: "m.venkatesh@smartclass360.edu", designation: "Assistant Professor", department_id: "d-ece", location: "ECE Block Room 103" },
+    { name: "Mr. K. Uday", email: "k.uday@smartclass360.edu", designation: "Assistant Professor", department_id: "d-ece", location: "ECE Block Room 105" },
+    { name: "Mrs. T. Sirisha", email: "t.sirisha@smartclass360.edu", designation: "Senior Lecturer", department_id: "d-ece", location: "ECE Block Room 110" },
+    { name: "Dr. P. Yaswanth", email: "p.yaswanth@smartclass360.edu", designation: "Associate Professor", department_id: "d-ece", location: "ECE Block Room 115" },
+    { name: "Ms. R. Harini", email: "r.harini@smartclass360.edu", designation: "Assistant Professor", department_id: "d-ece", location: "Signals Lab" },
+    { name: "Prof. D. Prasad", email: "d.prasad@smartclass360.edu", designation: "Assistant Professor", department_id: "d-ece", location: "Circuits Lab" },
+    { name: "Mrs. A. Keerthi", email: "a.keerthi@smartclass360.edu", designation: "Senior Lecturer", department_id: "d-ece", location: "Digital Lab" },
+    { name: "Dr. S. Ramesh", email: "s.ramesh@smartclass360.edu", designation: "Associate Professor", department_id: "d-ece", location: "ECE Block Room 121" },
+    { name: "Mr. V. Lokesh", email: "v.lokesh@smartclass360.edu", designation: "Assistant Professor", department_id: "d-ece", location: "Maths Room E2" },
   ];
 
   const users = [
     {
-      id: "u1",
+      id: "u-admin-1",
       name: "Dr. S. Kavitha",
       email: "admin@gmail.com",
       phone: "9849011101",
@@ -69,466 +271,227 @@ async function main() {
         notifications: { email: true, push: true },
       }),
     },
-    {
-      id: "u2",
-      name: "Prof. M. Harish Reddy",
-      email: "teacher@gmail.com",
-      phone: "9849011102",
+  ];
+
+  const admins = [{ id: "admin-1", user_id: "u-admin-1" }];
+  const teachers = [];
+
+  teacherRoster.forEach((teacher, index) => {
+    const userId = index === 0 ? "u-teacher-default" : `u-teacher-${String(index + 1).padStart(2, "0")}`;
+    const teacherId = index === 0 ? "t-default" : `t-${String(index + 1).padStart(2, "0")}`;
+    users.push({
+      id: userId,
+      name: teacher.name,
+      email: teacher.email,
+      phone: String(9849011200 + index),
       password_hash: passwordHash,
       role: "teacher",
       is_blocked: false,
-      created_at: "2023-07-02 09:00:00",
+      created_at: `2023-07-${String((index % 20) + 1).padStart(2, "0")} 09:00:00`,
       profile: JSON.stringify({
-        designation: "Assistant Professor",
-        bio: "Handles Data Structures, Java, and mentoring for II Year CSE.",
+        designation: teacher.designation,
+        bio: `${teacher.designation} handling academic delivery for ${teacher.department_id === "d-cse" ? "CSE" : "ECE"} classes.`,
         timezone: "Asia/Kolkata",
-        location: "CSE Block Room 304",
+        location: teacher.location,
         theme: "light",
         notifications: { email: true, push: true },
       }),
-    },
-    {
-      id: "u5",
-      name: "Ms. P. Anusha",
-      email: "anusha.faculty@smartclass360.edu",
-      phone: "9849011105",
-      password_hash: passwordHash,
-      role: "teacher",
-      is_blocked: false,
-      created_at: "2023-07-10 09:00:00",
-      profile: JSON.stringify({
-        designation: "Assistant Professor",
-        bio: "Teaches DBMS and maintains lab schedules for III Year CSE.",
-        timezone: "Asia/Kolkata",
-        location: "IT Lab 2",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u12",
-      name: "Mrs. K. Deepthi",
-      email: "deepthi.faculty@smartclass360.edu",
-      phone: "9849011112",
-      password_hash: passwordHash,
-      role: "teacher",
-      is_blocked: false,
-      created_at: "2024-01-05 09:00:00",
-      profile: JSON.stringify({
-        designation: "Senior Lecturer",
-        bio: "Leads English and soft-skills support for engineering students.",
-        timezone: "Asia/Kolkata",
-        location: "Humanities Block",
-        theme: "light",
-        notifications: { email: true, push: false },
-      }),
-    },
-    {
-      id: "u3",
-      name: "Sai Teja Reddy",
-      email: "student@gmail.com",
-      phone: "9849011103",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2023-08-18 09:00:00",
-      profile: JSON.stringify({
-        bio: "Day scholar from Kukatpally, focused on coding contests and full-stack development.",
-        timezone: "Asia/Kolkata",
-        location: "Hyderabad",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u4",
-      name: "Keerthana Nair",
-      email: "keerthana.nair23@smartclass360.edu",
-      phone: "9849011104",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2023-08-18 09:02:00",
-      profile: JSON.stringify({
-        bio: "Hosteller with strong performance in mathematics and presentation skills.",
-        timezone: "Asia/Kolkata",
-        location: "Girls Hostel Block A",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u6",
-      name: "Mounika Yadav",
-      email: "mounika.yadav23@smartclass360.edu",
-      phone: "9849011106",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2023-08-18 09:04:00",
-      profile: JSON.stringify({
-        bio: "Consistent lab performer who enjoys Java and peer-learning sessions.",
-        timezone: "Asia/Kolkata",
-        location: "Girls Hostel Block B",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u7",
-      name: "Abhinav Goud",
-      email: "abhinav.goud23@smartclass360.edu",
-      phone: "9849011107",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2023-08-18 09:06:00",
-      profile: JSON.stringify({
-        bio: "Needs regular attendance follow-up but shows promise in programming labs.",
-        timezone: "Asia/Kolkata",
-        location: "Boys Hostel Block C",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u8",
-      name: "Likhitha Reddy",
-      email: "likhitha.reddy23@smartclass360.edu",
-      phone: "9849011108",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2023-08-18 09:08:00",
-      profile: JSON.stringify({
-        bio: "Strong communication and clean note-taking, active in class seminars.",
-        timezone: "Asia/Kolkata",
-        location: "Warangal",
-        theme: "light",
-        notifications: { email: true, push: false },
-      }),
-    },
-    {
-      id: "u9",
-      name: "Vamshi Krishna",
-      email: "vamshi.krishna24@smartclass360.edu",
-      phone: "9849011109",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2024-08-10 09:00:00",
-      profile: JSON.stringify({
-        bio: "First-year student adapting well to the CSE foundation subjects.",
-        timezone: "Asia/Kolkata",
-        location: "Nizamabad",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u10",
-      name: "Pranavi Chowdary",
-      email: "pranavi.chowdary24@smartclass360.edu",
-      phone: "9849011110",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2024-08-10 09:03:00",
-      profile: JSON.stringify({
-        bio: "Excellent classroom attendance and quick concept uptake in first-year maths.",
-        timezone: "Asia/Kolkata",
-        location: "Karimnagar",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
-    {
-      id: "u11",
-      name: "Rohith Sai",
-      email: "rohith.sai22@smartclass360.edu",
-      phone: "9849011111",
-      password_hash: passwordHash,
-      role: "student",
-      is_blocked: false,
-      created_at: "2022-08-12 09:00:00",
-      profile: JSON.stringify({
-        bio: "III Year student preparing for placements while balancing DBMS and OS labs.",
-        timezone: "Asia/Kolkata",
-        location: "Siddipet",
-        theme: "light",
-        notifications: { email: true, push: true },
-      }),
-    },
+    });
+    teachers.push({
+      id: teacherId,
+      user_id: userId,
+      department_id: teacher.department_id,
+      designation: teacher.designation,
+    });
+    teacher.user_id = userId;
+    teacher.teacher_id = teacherId;
+  });
+
+  const subjects = [];
+  const subjectMap = new Map();
+  Object.entries(subjectGroups).forEach(([groupKey, groupSubjects]) => {
+    const yearId = groupKey === "cse2" ? "y-cse-2" : groupKey === "cse3" ? "y-cse-3" : "y-ece-2";
+    const departmentId = groupKey.startsWith("cse") ? "d-cse" : "d-ece";
+    groupSubjects.forEach((subject, index) => {
+      const id = `sub-${groupKey}-${index + 1}`;
+      const row = {
+        id,
+        name: subject.name,
+        code: subject.code,
+        department_id: departmentId,
+        year_id: yearId,
+        semester: subject.semester,
+        syllabus: subjectDescription(subject.name),
+        credits: subject.credits,
+      };
+      subjects.push(row);
+      subjectMap.set(`${groupKey}:${index}`, row);
+    });
+  });
+
+  const studentFirstNames = [
+    "Sai Teja",
+    "Keerthana",
+    "Mounika",
+    "Abhinav",
+    "Likhitha",
+    "Vamshi Krishna",
+    "Pranavi",
+    "Rohith Sai",
+    "Nikhil",
+    "Sravani",
+    "Harsha Vardhan",
+    "Bhavya Sri",
+    "Manideep",
+    "Sneha",
+    "Akshay",
+    "Divya",
+    "Chaitanya",
+    "Ananya",
+    "Karthikeya",
+    "Lasya",
   ];
+  const sectionSurnames = ["Reddy", "Naik", "Yadav", "Goud", "Chowdary", "Begum"];
+  const locationPool = ["Hyderabad", "Warangal", "Karimnagar", "Nizamabad", "Siddipet", "Khammam"];
 
-  const admins = [{ id: "admin-1", user_id: "u1" }];
+  const students = [];
+  const studentUsersMeta = [];
 
-  const teachers = [
-    { id: "t1", user_id: "u2", department_id: "d-cse", designation: "Assistant Professor" },
-    { id: "t2", user_id: "u5", department_id: "d-cse", designation: "Assistant Professor" },
-    { id: "t3", user_id: "u12", department_id: "d-cse", designation: "Senior Lecturer" },
+  sectionConfigs.forEach((section, sectionIndex) => {
+    for (let i = 0; i < 20; i += 1) {
+      const globalIndex = sectionIndex * 20 + i + 1;
+      const userId = globalIndex === 1 ? "u-student-default" : `u-student-${String(globalIndex).padStart(3, "0")}`;
+      const studentId = globalIndex === 1 ? "s-default" : `s-${String(globalIndex).padStart(3, "0")}`;
+      const rollNumber = `${section.admissionYear}MH1A${section.programCode}${String(section.rollStart + i).padStart(2, "0")}`;
+      const name = globalIndex === 1
+        ? "Sai Teja Reddy"
+        : `${studentFirstNames[i]} ${sectionSurnames[sectionIndex]}`;
+      const email = globalIndex === 1
+        ? "student@gmail.com"
+        : `${slug(studentFirstNames[i])}.${slug(sectionSurnames[sectionIndex])}${section.admissionYear}${String(i + 1).padStart(2, "0")}@smartclass360.edu`;
+      const phone = String(9700000000 + globalIndex);
+      const location = locationPool[(sectionIndex + i) % locationPool.length];
+      const band = getPerformanceBand(i);
+
+      users.push({
+        id: userId,
+        name,
+        email,
+        phone,
+        password_hash: passwordHash,
+        role: "student",
+        is_blocked: false,
+        created_at: `${section.admissionYear}-08-${String((i % 20) + 1).padStart(2, "0")} 09:${String((i % 6) * 5).padStart(2, "0")}:00`,
+        profile: JSON.stringify({
+          bio: `${section.label} student preparing through the Telangana engineering curriculum with focus on labs and internals.`,
+          timezone: "Asia/Kolkata",
+          location,
+          theme: "light",
+          notifications: { email: true, push: true },
+        }),
+      });
+
+      students.push({
+        id: studentId,
+        user_id: userId,
+        roll_number: rollNumber,
+        section_id: section.id,
+      });
+
+      studentUsersMeta.push({
+        user_id: userId,
+        student_id: studentId,
+        section_id: section.id,
+        section_label: section.label,
+        groupKey: section.groupKey,
+        localIndex: i,
+        globalIndex,
+        band,
+        roll_number: rollNumber,
+        name,
+      });
+    }
+  });
+
+  const teacherAssignments = [];
+  const teacherAssignmentMeta = [];
+  let teacherCursor = 0;
+
+  sectionConfigs.forEach((section) => {
+    subjectGroups[section.groupKey].forEach((subjectTemplate, subjectIndex) => {
+      const teacher = teacherRoster[teacherCursor];
+      const subject = subjectMap.get(`${section.groupKey}:${subjectIndex}`);
+      const assignmentId = `ta-${String(teacherCursor + 1).padStart(2, "0")}`;
+      const row = {
+        id: assignmentId,
+        teacher_id: teacher.teacher_id,
+        subject_id: subject.id,
+        section_id: section.id,
+        academic_year: "2025-26",
+      };
+      teacherAssignments.push(row);
+      teacherAssignmentMeta.push({
+        ...row,
+        subject,
+        section,
+        teacher,
+        subjectIndex,
+      });
+      teacherCursor += 1;
+    });
+  });
+
+  const timetableSlots = [
+    { day: "Monday", start: "09:30", end: "10:20" },
+    { day: "Tuesday", start: "10:20", end: "11:10" },
+    { day: "Wednesday", start: "11:20", end: "12:10" },
+    { day: "Thursday", start: "13:00", end: "13:50" },
+    { day: "Friday", start: "14:40", end: "15:30" },
   ];
+  const dayDates = {
+    Monday: ["2026-04-27", "2026-05-04"],
+    Tuesday: ["2026-04-28", "2026-05-05"],
+    Wednesday: ["2026-04-29", "2026-05-06"],
+    Thursday: ["2026-04-30", "2026-05-07"],
+    Friday: ["2026-05-01", "2026-05-08"],
+  };
 
-  const students = [
-    { id: "s-u3", user_id: "u3", roll_number: "23MH1A05A1", section_id: "sec-cse2-a" },
-    { id: "s-u4", user_id: "u4", roll_number: "23MH1A05A2", section_id: "sec-cse2-a" },
-    { id: "s-u6", user_id: "u6", roll_number: "23MH1A05A3", section_id: "sec-cse2-a" },
-    { id: "s-u7", user_id: "u7", roll_number: "23MH1A05A4", section_id: "sec-cse2-a" },
-    { id: "s-u8", user_id: "u8", roll_number: "23MH1A05B1", section_id: "sec-cse2-b" },
-    { id: "s-u9", user_id: "u9", roll_number: "24MH1A0501", section_id: "sec-cse1-a" },
-    { id: "s-u10", user_id: "u10", roll_number: "24MH1A0502", section_id: "sec-cse1-a" },
-    { id: "s-u11", user_id: "u11", roll_number: "22MH1A0561", section_id: "sec-cse3-a" },
-  ];
-
-  const subjects = [
-    {
-      id: "sub-ds",
-      name: "Data Structures",
-      code: "CS203",
-      department_id: "d-cse",
-      year_id: "y-cse-2",
-      semester: "II-II",
-      syllabus: "Stacks, queues, trees, graphs, searching, sorting, and problem solving based on R22 syllabus.",
-      credits: 4,
-    },
-    {
-      id: "sub-java",
-      name: "Object Oriented Programming through Java",
-      code: "CS204",
-      department_id: "d-cse",
-      year_id: "y-cse-2",
-      semester: "II-II",
-      syllabus: "Classes, inheritance, collections, exceptions, JDBC basics, and mini-programming exercises.",
-      credits: 4,
-    },
-    {
-      id: "sub-db",
-      name: "Database Management Systems",
-      code: "CS305",
-      department_id: "d-cse",
-      year_id: "y-cse-3",
-      semester: "III-I",
-      syllabus: "ER modeling, relational algebra, SQL, normalization, transactions, and PL/SQL.",
-      credits: 4,
-    },
-    {
-      id: "sub-eng",
-      name: "Professional English",
-      code: "HS202",
-      department_id: "d-cse",
-      year_id: "y-cse-2",
-      semester: "II-II",
-      syllabus: "Technical communication, presentations, group discussion, and campus-placement communication practice.",
-      credits: 2,
-    },
-    {
-      id: "sub-m1",
-      name: "Engineering Mathematics-I",
-      code: "MA101",
-      department_id: "d-cse",
-      year_id: "y-cse-1",
-      semester: "I-I",
-      syllabus: "Matrices, differential equations, multivariable calculus, and engineering applications.",
-      credits: 4,
-    },
-  ];
-
-  const teacherAssignments = [
-    { id: "ta-1", teacher_id: "t1", subject_id: "sub-ds", section_id: "sec-cse2-a", academic_year: "2025-26" },
-    { id: "ta-2", teacher_id: "t1", subject_id: "sub-java", section_id: "sec-cse2-a", academic_year: "2025-26" },
-    { id: "ta-3", teacher_id: "t2", subject_id: "sub-db", section_id: "sec-cse3-a", academic_year: "2025-26" },
-    { id: "ta-4", teacher_id: "t3", subject_id: "sub-eng", section_id: "sec-cse2-a", academic_year: "2025-26" },
-    { id: "ta-5", teacher_id: "t1", subject_id: "sub-ds", section_id: "sec-cse2-b", academic_year: "2025-26" },
-    { id: "ta-6", teacher_id: "t3", subject_id: "sub-m1", section_id: "sec-cse1-a", academic_year: "2025-26" },
-  ];
-
-  const timetables = [
-    { id: "tt1", teacher_assignment_id: "ta-1", day_of_week: "Monday", start_time: "09:30", end_time: "10:20", room: "CSE-302" },
-    { id: "tt2", teacher_assignment_id: "ta-2", day_of_week: "Monday", start_time: "10:20", end_time: "11:10", room: "CSE-302" },
-    { id: "tt3", teacher_assignment_id: "ta-4", day_of_week: "Tuesday", start_time: "11:20", end_time: "12:10", room: "Seminar Hall 2" },
-    { id: "tt4", teacher_assignment_id: "ta-3", day_of_week: "Wednesday", start_time: "13:00", end_time: "13:50", room: "IT Lab 2" },
-    { id: "tt5", teacher_assignment_id: "ta-5", day_of_week: "Thursday", start_time: "09:30", end_time: "10:20", room: "CSE-204" },
-    { id: "tt6", teacher_assignment_id: "ta-6", day_of_week: "Friday", start_time: "10:20", end_time: "11:10", room: "Block A-105" },
-    { id: "tt7", teacher_assignment_id: "ta-1", day_of_week: "Friday", start_time: "14:40", end_time: "15:30", room: "DS Lab 1" },
-  ];
-
-  const attendanceSessions = [
-    { id: "as-1", teacher_assignment_id: "ta-1", timetable_id: "tt1", date: "2026-05-04", created_by: "t1" },
-    { id: "as-2", teacher_assignment_id: "ta-2", timetable_id: "tt2", date: "2026-05-04", created_by: "t1" },
-    { id: "as-3", teacher_assignment_id: "ta-4", timetable_id: "tt3", date: "2026-05-05", created_by: "t3" },
-    { id: "as-4", teacher_assignment_id: "ta-3", timetable_id: "tt4", date: "2026-05-06", created_by: "t2" },
-    { id: "as-5", teacher_assignment_id: "ta-6", timetable_id: "tt6", date: "2026-05-09", created_by: "t3" },
-  ];
-
-  const attendanceRecords = [
-    { id: "ar1", session_id: "as-1", student_id: "s-u3", status: "present" },
-    { id: "ar2", session_id: "as-1", student_id: "s-u4", status: "present" },
-    { id: "ar3", session_id: "as-1", student_id: "s-u6", status: "present" },
-    { id: "ar4", session_id: "as-1", student_id: "s-u7", status: "absent" },
-    { id: "ar5", session_id: "as-2", student_id: "s-u3", status: "present" },
-    { id: "ar6", session_id: "as-2", student_id: "s-u4", status: "late" },
-    { id: "ar7", session_id: "as-2", student_id: "s-u6", status: "present" },
-    { id: "ar8", session_id: "as-2", student_id: "s-u7", status: "absent" },
-    { id: "ar9", session_id: "as-3", student_id: "s-u3", status: "present" },
-    { id: "ar10", session_id: "as-3", student_id: "s-u4", status: "present" },
-    { id: "ar11", session_id: "as-4", student_id: "s-u11", status: "present" },
-    { id: "ar12", session_id: "as-5", student_id: "s-u9", status: "present" },
-    { id: "ar13", session_id: "as-5", student_id: "s-u10", status: "present" },
-  ];
-
-  const marks = [
-    { id: "m1", student_id: "s-u3", subject_id: "sub-ds", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "mid", marks_obtained: 27, max_marks: 30, is_online: false, date: "2026-03-18" },
-    { id: "m2", student_id: "s-u3", subject_id: "sub-ds", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "assignment", marks_obtained: 18, max_marks: 20, is_online: false, date: "2026-04-10" },
-    { id: "m3", student_id: "s-u3", subject_id: "sub-java", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "mid", marks_obtained: 26, max_marks: 30, is_online: false, date: "2026-03-20" },
-    { id: "m4", student_id: "s-u4", subject_id: "sub-ds", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "mid", marks_obtained: 22, max_marks: 30, is_online: false, date: "2026-03-18" },
-    { id: "m5", student_id: "s-u4", subject_id: "sub-java", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "mid", marks_obtained: 21, max_marks: 30, is_online: false, date: "2026-03-20" },
-    { id: "m6", student_id: "s-u6", subject_id: "sub-ds", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "mid", marks_obtained: 28, max_marks: 30, is_online: false, date: "2026-03-18" },
-    { id: "m7", student_id: "s-u7", subject_id: "sub-ds", teacher_id: "t1", section_id: "sec-cse2-a", exam_type: "mid", marks_obtained: 16, max_marks: 30, is_online: false, date: "2026-03-18" },
-    { id: "m8", student_id: "s-u8", subject_id: "sub-ds", teacher_id: "t1", section_id: "sec-cse2-b", exam_type: "mid", marks_obtained: 25, max_marks: 30, is_online: false, date: "2026-03-18" },
-    { id: "m9", student_id: "s-u9", subject_id: "sub-m1", teacher_id: "t3", section_id: "sec-cse1-a", exam_type: "quiz", marks_obtained: 14, max_marks: 20, is_online: true, date: "2026-04-12" },
-    { id: "m10", student_id: "s-u10", subject_id: "sub-m1", teacher_id: "t3", section_id: "sec-cse1-a", exam_type: "online_quiz", marks_obtained: 18, max_marks: 20, is_online: true, date: "2026-04-12" },
-    { id: "m11", student_id: "s-u11", subject_id: "sub-db", teacher_id: "t2", section_id: "sec-cse3-a", exam_type: "final", marks_obtained: 72, max_marks: 100, is_online: false, date: "2026-03-28" },
-  ];
-
-  const assignments = [
-    {
-      id: "a1",
-      title: "R22 Data Structures Record Submission",
-      description: "Submit the record for linked lists, stack applications, and binary tree traversals as per the lab manual.",
-      subject_id: "sub-ds",
-      teacher_assignment_id: "ta-1",
-      type: "assignment",
-      due_date: "2026-05-15 17:00:00",
-      scheduled_at: "2026-05-10 09:30:00",
-      max_marks: 20,
-    },
-    {
-      id: "a2",
-      title: "Java Internal Quiz - Collections Framework",
-      description: "Timed quiz on ArrayList, HashMap, exception handling, and basic file I/O.",
-      subject_id: "sub-java",
-      teacher_assignment_id: "ta-2",
-      type: "quiz",
-      due_date: "2026-05-13 12:00:00",
-      scheduled_at: "2026-05-12 10:20:00",
-      max_marks: 20,
-    },
-    {
-      id: "a3",
-      title: "DBMS Mini Assignment - Normalization and SQL",
-      description: "Normalize the given student-result schema to 3NF and write SQL queries for reports.",
-      subject_id: "sub-db",
-      teacher_assignment_id: "ta-3",
-      type: "assignment",
-      due_date: "2026-05-18 17:00:00",
-      scheduled_at: "2026-05-11 13:00:00",
-      max_marks: 15,
-    },
-  ];
-
-  const assignmentQuestions = [
-    {
-      id: "q-a2-1",
-      assignment_id: "a2",
-      question_text: "Which Java collection maintains insertion order and allows duplicates?",
-      question_type: "mcq",
-      correct_option_index: 0,
-      marks: 5,
-      display_order: 1,
-    },
-    {
-      id: "q-a2-2",
-      assignment_id: "a2",
-      question_text: "Which block is always executed whether an exception occurs or not?",
-      question_type: "mcq",
-      correct_option_index: 2,
-      marks: 5,
-      display_order: 2,
-    },
-  ];
-
-  const assignmentQuestionOptions = [
-    { id: "qo-a2-1-1", question_id: "q-a2-1", option_text: "ArrayList", display_order: 0 },
-    { id: "qo-a2-1-2", question_id: "q-a2-1", option_text: "HashSet", display_order: 1 },
-    { id: "qo-a2-1-3", question_id: "q-a2-1", option_text: "TreeMap", display_order: 2 },
-    { id: "qo-a2-1-4", question_id: "q-a2-1", option_text: "PriorityQueue", display_order: 3 },
-    { id: "qo-a2-2-1", question_id: "q-a2-2", option_text: "try", display_order: 0 },
-    { id: "qo-a2-2-2", question_id: "q-a2-2", option_text: "catch", display_order: 1 },
-    { id: "qo-a2-2-3", question_id: "q-a2-2", option_text: "finally", display_order: 2 },
-    { id: "qo-a2-2-4", question_id: "q-a2-2", option_text: "throw", display_order: 3 },
-  ];
-
-  const materials = [
-    {
-      id: "mat-1",
-      title: "Data Structures Unit-III Notes",
-      description: "Linked list operations, stack applications, and tree traversals based on the classroom handout.",
-      subject_id: "sub-ds",
-      teacher_assignment_id: "ta-1",
-      created_by: "t1",
-      file_url: "https://example.com/materials/jntuh-ds-unit3-notes.pdf",
-      material_type: "pdf",
-    },
-    {
-      id: "mat-2",
-      title: "Java Collections Quick Revision Sheet",
-      description: "Short revision notes for lists, maps, sets, and common interview questions.",
-      subject_id: "sub-java",
-      teacher_assignment_id: "ta-2",
-      created_by: "t1",
-      file_url: "https://example.com/materials/java-collections-revision.pdf",
-      material_type: "note",
-    },
-    {
-      id: "mat-3",
-      title: "DBMS SQL Lab Manual",
-      description: "Lab manual with SQL joins, aggregate functions, subqueries, and normalization tasks.",
-      subject_id: "sub-db",
-      teacher_assignment_id: "ta-3",
-      created_by: "t2",
-      file_url: "https://example.com/materials/dbms-sql-lab-manual.pdf",
-      material_type: "pdf",
-    },
-  ];
-
-  const submissions = [
-    { id: "subm1", assignment_id: "a1", student_id: "s-u3", file_url: null, submitted_at: null, marks: null, status: "pending" },
-    { id: "subm2", assignment_id: "a1", student_id: "s-u4", file_url: "https://example.com/submissions/keerthana-ds-record.pdf", submitted_at: "2026-05-12 18:10:00", marks: null, status: "submitted" },
-    { id: "subm3", assignment_id: "a1", student_id: "s-u6", file_url: "https://example.com/submissions/mounika-ds-record.pdf", submitted_at: "2026-05-12 16:45:00", marks: 19, status: "graded" },
-    { id: "subm4", assignment_id: "a2", student_id: "s-u3", file_url: null, submitted_at: "2026-05-12 10:32:00", marks: 10, status: "graded" },
-    { id: "subm5", assignment_id: "a3", student_id: "s-u11", file_url: "https://example.com/submissions/rohith-dbms-mini.pdf", submitted_at: "2026-05-14 15:05:00", marks: 12, status: "graded" },
-  ];
-
-  const exams = [
-    { id: "e1", subject_id: "sub-ds", section_id: "sec-cse2-a", exam_type: "mid", date: "2026-05-20", max_marks: 30 },
-    { id: "e2", subject_id: "sub-java", section_id: "sec-cse2-a", exam_type: "mid", date: "2026-05-23", max_marks: 30 },
-    { id: "e3", subject_id: "sub-db", section_id: "sec-cse3-a", exam_type: "final", date: "2026-05-28", max_marks: 100 },
-  ];
-
+  const timetables = [];
+  const attendanceSessions = [];
+  const attendanceRecords = [];
+  const materials = [];
+  const assignments = [];
+  const assignmentQuestions = [];
+  const assignmentQuestionOptions = [];
+  const submissions = [];
+  const exams = [];
   const notifications = [
-    { id: "n1", user_id: "u2", title: "Pending Record Review", message: "2 Data Structures record submissions are waiting for grading.", type: "alert", is_read: false, action_url: "/teacher/assignments" },
-    { id: "n2", user_id: "u2", title: "Attendance Correction Request", message: "Sai Teja Reddy requested an attendance correction for Data Structures.", type: "request", is_read: false, action_url: "/teacher/attendance" },
-    { id: "n3", user_id: "u3", title: "New Record Submission Posted", message: "R22 Data Structures Record Submission has been assigned to your section.", type: "assignment", is_read: false, action_url: "/student/assignments?id=a1" },
-    { id: "n4", user_id: "u3", title: "Reminder: Java Quiz", message: "Java Internal Quiz - Collections Framework is scheduled for tomorrow during 2nd period.", type: "reminder", is_read: false, action_url: "/student/exams" },
-    { id: "n5", user_id: "u1", title: "Teacher Profile Request", message: "Prof. M. Harish Reddy submitted a profile update request.", type: "request", is_read: false, action_url: "/admin/dashboard" },
+    {
+      id: "n-admin-1",
+      user_id: "u-admin-1",
+      title: "Faculty setup complete",
+      message: "Teacher assignments and section mapping are loaded for the semester.",
+      type: "alert",
+      is_read: false,
+      action_url: "/admin/users",
+    },
   ];
-
   const requests = [
     {
       id: "r1",
-      user_id: "u3",
+      user_id: "u-student-default",
       type: "attendance_change",
-      target_id: "ar1",
-      old_value: JSON.stringify({ subject: "Data Structures", date: "2026-05-04", status: "present" }),
-      new_value: JSON.stringify({ attendance_record_id: "ar1", subject: "Data Structures", date: "2026-05-04", status: "late", note: "Reached class after the morning bus delay." }),
+      target_id: "ar-0001",
+      old_value: JSON.stringify({ subject: "Data Structures", status: "present", date: "2026-04-27" }),
+      new_value: JSON.stringify({ attendance_record_id: "ar-0001", status: "late", note: "Requested correction after transport delay." }),
       status: "pending",
       reviewed_by: null,
     },
     {
       id: "r2",
-      user_id: "u2",
+      user_id: "u-teacher-default",
       type: "profile_update",
-      target_id: "u2",
+      target_id: "u-teacher-default",
       old_value: JSON.stringify({ location: "CSE Block Room 304" }),
       new_value: JSON.stringify({ profile: { location: "CSE Block Room 306" } }),
       status: "pending",
@@ -536,89 +499,285 @@ async function main() {
     },
   ];
 
-  const performanceRows = [
-    {
-      id: "perf1",
-      student_id: "s-u3",
-      subject_id: "sub-ds",
-      avg_marks: 88,
-      attendance_percentage: 92,
-      assignment_score: 90,
-      exam_score: 88,
-      final_marks: 86,
-      past_performance: 84,
-      predicted_performance: "Good",
-      predicted_grade: "A",
-      pass_prediction: true,
+  teacherAssignmentMeta.forEach((item, assignmentIndex) => {
+    const slot = timetableSlots[item.subjectIndex];
+    const timetableId = `tt-${String(assignmentIndex + 1).padStart(2, "0")}`;
+    timetables.push({
+      id: timetableId,
+      teacher_assignment_id: item.id,
+      day_of_week: slot.day,
+      start_time: slot.start,
+      end_time: slot.end,
+      room: `${item.section.class_name.includes("ECE") ? "ECE" : "CSE"}-${item.section.name}${item.subjectIndex + 1}`,
+    });
+
+    dayDates[slot.day].forEach((date, sessionIndex) => {
+      const sessionId = `as-${String(attendanceSessions.length + 1).padStart(4, "0")}`;
+      attendanceSessions.push({
+        id: sessionId,
+        teacher_assignment_id: item.id,
+        timetable_id: timetableId,
+        date,
+        created_by: item.teacher.teacher_id,
+      });
+
+      const sectionStudents = studentUsersMeta.filter((student) => student.section_id === item.section.id);
+      sectionStudents.forEach((student) => {
+        attendanceRecords.push({
+          id: `ar-${String(attendanceRecords.length + 1).padStart(4, "0")}`,
+          session_id: sessionId,
+          student_id: student.student_id,
+          status: statusForBand(student.band, item.subjectIndex, sessionIndex, student.localIndex),
+        });
+      });
+    });
+
+    materials.push({
+      id: `mat-${String(materials.length + 1).padStart(3, "0")}`,
+      title: `${item.subject.name} Handout - ${item.section.label}`,
+      description: `${item.subject.name} study material prepared according to the JNTUH style internal syllabus flow.`,
+      subject_id: item.subject.id,
+      teacher_assignment_id: item.id,
+      created_by: item.teacher.teacher_id,
+      file_url: `https://example.com/materials/${slug(item.subject.name)}-${slug(item.section.label)}.pdf`,
+      material_type: item.subjectIndex % 2 === 0 ? "pdf" : "note",
+    });
+
+    const assignmentId = `a-${String(assignments.length + 1).padStart(3, "0")}`;
+    const assignmentType = item.subjectIndex % 2 === 0 ? "assignment" : "quiz";
+    assignments.push({
+      id: assignmentId,
+      title: assignmentType === "quiz"
+        ? `${item.subject.name} Internal Quiz - ${item.section.label}`
+        : `${item.subject.name} Record / Assignment - ${item.section.label}`,
+      description: assignmentType === "quiz"
+        ? `Timed internal quiz for ${item.subject.name} aligned to the current unit plan.`
+        : `Prepare and submit the written assignment/record for ${item.subject.name} as per the faculty instructions.`,
+      subject_id: item.subject.id,
+      teacher_assignment_id: item.id,
+      type: assignmentType,
+      due_date: `2026-05-${String(12 + item.subjectIndex).padStart(2, "0")} 17:00:00`,
+      scheduled_at: `2026-05-${String(8 + item.subjectIndex).padStart(2, "0")} 09:00:00`,
+      max_marks: assignmentType === "quiz" ? 20 : 20,
+    });
+
+    if (assignmentType === "quiz") {
+      for (let questionIndex = 0; questionIndex < 2; questionIndex += 1) {
+        const questionId = `q-${assignmentId}-${questionIndex + 1}`;
+        assignmentQuestions.push({
+          id: questionId,
+          assignment_id: assignmentId,
+          question_text: `${item.subject.name}: question ${questionIndex + 1} for ${item.section.label}`,
+          question_type: "mcq",
+          correct_option_index: questionIndex % 4,
+          marks: 5,
+          display_order: questionIndex + 1,
+        });
+        ["Option A", "Option B", "Option C", "Option D"].forEach((label, optionIndex) => {
+          assignmentQuestionOptions.push({
+            id: `qo-${questionId}-${optionIndex + 1}`,
+            question_id: questionId,
+            option_text: `${label} - ${item.subject.name}`,
+            display_order: optionIndex,
+          });
+        });
+      }
+    }
+
+    exams.push({
+      id: `e-${String(exams.length + 1).padStart(3, "0")}`,
+      subject_id: item.subject.id,
+      section_id: item.section.id,
+      exam_type: item.section.groupKey === "cse3" ? "final" : "mid",
+      date: `2026-05-${String(20 + item.subjectIndex).padStart(2, "0")}`,
+      max_marks: item.section.groupKey === "cse3" ? 100 : 30,
+    });
+
+    const sectionStudents = studentUsersMeta.filter((student) => student.section_id === item.section.id);
+    sectionStudents.forEach((student) => {
+      const submissionStatus = assignmentType === "quiz"
+        ? (student.localIndex < 14 ? "graded" : student.localIndex < 18 ? "submitted" : "pending")
+        : (student.localIndex < 12 ? "graded" : student.localIndex < 17 ? "submitted" : "pending");
+      const submissionMarks = submissionStatus === "graded"
+        ? clamp(Math.round(scoreSeed(student.band, item.subjectIndex, student.localIndex) / 5), 8, 20)
+        : null;
+      submissions.push({
+        id: `subm-${String(submissions.length + 1).padStart(4, "0")}`,
+        assignment_id: assignmentId,
+        student_id: student.student_id,
+        file_url: assignmentType === "assignment" && submissionStatus !== "pending"
+          ? `https://example.com/submissions/${slug(student.roll_number)}-${slug(item.subject.name)}.pdf`
+          : null,
+        submitted_text: assignmentType === "assignment" && submissionStatus !== "pending"
+          ? `${item.subject.name} record submitted by ${student.name}.`
+          : null,
+        answers: JSON.stringify(assignmentType === "quiz" ? { [`q-${assignmentId}-1`]: 0, [`q-${assignmentId}-2`]: 1 } : {}),
+        submitted_at: submissionStatus === "pending"
+          ? null
+          : `2026-05-${String(10 + item.subjectIndex).padStart(2, "0")} 15:${String((student.localIndex % 6) * 5).padStart(2, "0")}:00`,
+        marks: submissionMarks,
+        status: submissionStatus,
+      });
+    });
+  });
+
+  const marks = [];
+  const markSummary = new Map();
+
+  function pushMark(mark) {
+    marks.push(mark);
+    const key = `${mark.student_id}:${mark.subject_id}`;
+    const current = markSummary.get(key) || [];
+    current.push(mark);
+    markSummary.set(key, current);
+  }
+
+  studentUsersMeta.forEach((student) => {
+    const section = sectionConfigs.find((item) => item.id === student.section_id);
+    subjectGroups[section.groupKey].forEach((subjectTemplate, subjectIndex) => {
+      const subject = subjectMap.get(`${section.groupKey}:${subjectIndex}`);
+      const teacherAssignment = teacherAssignmentMeta.find(
+        (item) => item.section.id === section.id && item.subject.id === subject.id
+      );
+      const baseScore = scoreSeed(student.band, subjectIndex, student.localIndex);
+      const midMarks = clamp(Math.round((baseScore / 100) * 30), 11, 30);
+      const assignmentMarks = clamp(Math.round((baseScore / 100) * 20), 7, 20);
+
+      pushMark({
+        id: `m-${String(marks.length + 1).padStart(5, "0")}`,
+        student_id: student.student_id,
+        subject_id: subject.id,
+        teacher_id: teacherAssignment.teacher.teacher_id,
+        section_id: section.id,
+        exam_type: "mid",
+        marks_obtained: midMarks,
+        max_marks: 30,
+        is_online: false,
+        date: "2026-03-18",
+      });
+
+      pushMark({
+        id: `m-${String(marks.length + 1).padStart(5, "0")}`,
+        student_id: student.student_id,
+        subject_id: subject.id,
+        teacher_id: teacherAssignment.teacher.teacher_id,
+        section_id: section.id,
+        exam_type: "assignment",
+        marks_obtained: assignmentMarks,
+        max_marks: 20,
+        is_online: false,
+        date: "2026-04-10",
+      });
+
+      if (section.groupKey === "cse3") {
+        pushMark({
+          id: `m-${String(marks.length + 1).padStart(5, "0")}`,
+          student_id: student.student_id,
+          subject_id: subject.id,
+          teacher_id: teacherAssignment.teacher.teacher_id,
+          section_id: section.id,
+          exam_type: "final",
+          marks_obtained: clamp(Math.round((baseScore / 100) * 100), 40, 96),
+          max_marks: 100,
+          is_online: false,
+          date: "2026-03-28",
+        });
+      }
+
+      if (subjectIndex % 2 === 1) {
+        pushMark({
+          id: `m-${String(marks.length + 1).padStart(5, "0")}`,
+          student_id: student.student_id,
+          subject_id: subject.id,
+          teacher_id: teacherAssignment.teacher.teacher_id,
+          section_id: section.id,
+          exam_type: "online_quiz",
+          marks_obtained: clamp(Math.round((baseScore / 100) * 20), 6, 20),
+          max_marks: 20,
+          is_online: true,
+          date: "2026-04-22",
+        });
+      }
+    });
+  });
+
+  const performanceRows = [];
+  markSummary.forEach((studentSubjectMarks, key) => {
+    const [studentId, subjectId] = key.split(":");
+    const student = studentUsersMeta.find((item) => item.student_id === studentId);
+    const attendanceForSubject = attendanceRecords.filter((record) => {
+      const session = attendanceSessions.find((item) => item.id === record.session_id);
+      const assignment = teacherAssignmentMeta.find((item) => item.id === session.teacher_assignment_id);
+      return record.student_id === studentId && assignment.subject.id === subjectId;
+    });
+    const presentCount = attendanceForSubject.filter((record) => record.status === "present").length;
+    const attendancePct = attendanceForSubject.length
+      ? Number(((presentCount / attendanceForSubject.length) * 100).toFixed(2))
+      : 0;
+    const assignmentScore = average(
+      studentSubjectMarks
+        .filter((mark) => ["assignment", "quiz", "online_quiz"].includes(mark.exam_type))
+        .map((mark) => (Number(mark.marks_obtained) / Number(mark.max_marks)) * 100)
+    );
+    const examScore = average(
+      studentSubjectMarks
+        .filter((mark) => mark.exam_type === "mid")
+        .map((mark) => (Number(mark.marks_obtained) / Number(mark.max_marks)) * 100)
+    );
+    const finalScore = average(
+      studentSubjectMarks
+        .filter((mark) => mark.exam_type === "final")
+        .map((mark) => (Number(mark.marks_obtained) / Number(mark.max_marks)) * 100)
+    ) || average(
+      studentSubjectMarks.map((mark) => (Number(mark.marks_obtained) / Number(mark.max_marks)) * 100)
+    );
+    const avgMarks = average(
+      studentSubjectMarks.map((mark) => (Number(mark.marks_obtained) / Number(mark.max_marks)) * 100)
+    );
+    const predictedPerformance = avgMarks >= 80 ? "Good" : avgMarks >= 60 ? "Average" : "At Risk";
+    performanceRows.push({
+      id: `perf-${String(performanceRows.length + 1).padStart(4, "0")}`,
+      student_id: studentId,
+      subject_id: subjectId,
+      avg_marks: avgMarks,
+      attendance_percentage: attendancePct,
+      assignment_score: assignmentScore,
+      exam_score: examScore,
+      final_marks: finalScore,
+      past_performance: clamp(avgMarks - (student.band === "good" ? 3 : student.band === "average" ? 1 : -2), 35, 95),
+      predicted_performance: predictedPerformance,
+      predicted_grade: toFriendlyGrade(avgMarks),
+      pass_prediction: avgMarks >= 50,
       insights: JSON.stringify({
-        factors: ["Strong record work", "High class attendance", "Stable internal marks"],
-        improvements: ["Continue weekly coding practice", "Attempt one extra DS problem set every weekend"],
+        factors:
+          predictedPerformance === "Good"
+            ? ["High internal marks", "Strong attendance discipline", "Consistent classroom engagement"]
+            : predictedPerformance === "Average"
+            ? ["Moderate consistency", "Needs sharper revision before internals", "Attendance is serviceable but can improve"]
+            : ["Low attendance trend", "Weak assignment completion", "Needs structured faculty follow-up"],
+        improvements:
+          predictedPerformance === "Good"
+            ? ["Keep solving previous internal papers", "Maintain lab record quality"]
+            : predictedPerformance === "Average"
+            ? ["Revise unit-wise notes weekly", "Attend extra problem-solving sessions"]
+            : ["Improve attendance immediately", "Use mentor-led revision and complete every pending record"],
       }),
-    },
-    {
-      id: "perf2",
-      student_id: "s-u4",
-      subject_id: "sub-ds",
-      avg_marks: 72,
-      attendance_percentage: 80,
-      assignment_score: 74,
-      exam_score: 72,
-      final_marks: 70,
-      past_performance: 71,
-      predicted_performance: "Average",
-      predicted_grade: "B",
-      pass_prediction: true,
-      insights: JSON.stringify({
-        factors: ["Decent attendance", "Average internal consistency"],
-        improvements: ["Focus on graph problems", "Revise stack and queue applications before the next mid"],
-      }),
-    },
-    {
-      id: "perf3",
-      student_id: "s-u7",
-      subject_id: "sub-ds",
-      avg_marks: 54,
-      attendance_percentage: 63,
-      assignment_score: 48,
-      exam_score: 53,
-      final_marks: 52,
-      past_performance: 57,
-      predicted_performance: "At Risk",
-      predicted_grade: "C",
-      pass_prediction: true,
-      insights: JSON.stringify({
-        factors: ["Low attendance trend", "Incomplete assignment preparation", "Below-section average in internals"],
-        improvements: ["Attend every remaining period", "Complete the record with mentor review", "Take one practice quiz every three days"],
-      }),
-    },
-    {
-      id: "perf4",
-      student_id: "s-u11",
-      subject_id: "sub-db",
-      avg_marks: 74,
-      attendance_percentage: 83,
-      assignment_score: 78,
-      exam_score: 71,
-      final_marks: 72,
-      past_performance: 69,
-      predicted_performance: "Average",
-      predicted_grade: "B",
-      pass_prediction: true,
-      insights: JSON.stringify({
-        factors: ["Improved SQL practice", "Regular lab participation"],
-        improvements: ["Strengthen transaction-management concepts", "Revise normalization and indexing before placement tests"],
-      }),
-    },
-  ];
+    });
+  });
 
   const auditLogs = [
     {
       id: "log1",
-      user_id: "u1",
+      user_id: "u-admin-1",
       action: "seed_database",
       entity: "system",
       old_data: null,
-      new_data: JSON.stringify({ status: "initialized_with_telangana_style_seed_data" }),
+      new_data: JSON.stringify({
+        total_students: students.length,
+        total_teachers: teachers.length,
+        sections: sectionConfigs.length,
+        note: "Telangana engineering college style dataset loaded",
+      }),
     },
   ];
 
@@ -649,7 +808,7 @@ async function main() {
     await insert("audit_logs", auditLogs, client);
   });
 
-  console.log("Database schema created and seeded with Telangana-style academic data.");
+  console.log("Database schema created and seeded with 120 students, 30 teachers, and Telangana-style academic data.");
   await pool.end();
 }
 
