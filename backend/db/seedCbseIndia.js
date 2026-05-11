@@ -119,9 +119,8 @@ function subjectIdForCode(code) {
   return `subj-${code}`;
 }
 
-function studentsPerSection(grade, secChar) {
-  const base = 25 + ((grade + secChar.charCodeAt(0)) % 11);
-  return Math.min(35, Math.max(25, base));
+function studentsPerSection() {
+  return 10;
 }
 
 function hashStr(s) {
@@ -475,11 +474,11 @@ async function createAttendanceAndMarks(client) {
   }
 
   const baseDates = [];
-  for (let d = 1; d <= 28; d += 1) {
+  for (let d = 1; d <= 7; d += 1) {
     baseDates.push(`2025-11-${String(d).padStart(2, "0")}`);
   }
 
-  for (const ta of tas) {
+  for (const ta of tas.slice(0, 20)) {
     const ttIds = ttByTa.get(ta.id) || [];
     if (!ttIds.length) continue;
     const studs = studentsBySec.get(ta.section_id) || [];
@@ -573,7 +572,7 @@ async function createAttendanceAndMarks(client) {
 async function createAssignmentsAndSubmissions(client) {
   const tas = await loadAssignmentRows(client);
   const studentsBySec = await loadStudentsBySection(client);
-  for (const ta of tas.slice(0, 400)) {
+  for (const ta of tas.slice(0, 20)) {
     const studs = studentsBySec.get(ta.section_id) || [];
     const aid = `asg-${ta.id}-1`;
     await client.query(
