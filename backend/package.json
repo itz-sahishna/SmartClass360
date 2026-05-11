@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "db:seed": "node db/seed.js",
-    "db:bootstrap": "node db/bootstrapProductionUsers.js"
+    "db:bootstrap": "node db/bootstrapProductionUsers.js",
+    "db:init-schema": "node db/initializeSchema.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

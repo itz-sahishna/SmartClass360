@@ -11,6 +11,7 @@ const teacherRoutes = require("./routes/teacherRoutes");
 const aiRoutes = require("./routes/ai");
 const mlRoutes = require("./routes/ml");
 const errorHandler = require("./middleware/errorHandler");
+const { ensureDatabaseSchema } = require("../db/initializeSchema");
 const { ensureProductionDefaultUsers } = require("../db/bootstrapProductionUsers");
 
 const app = express();
@@ -45,6 +46,12 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {
+  try {
+    await ensureDatabaseSchema();
+  } catch (err) {
+    console.error("[schema] Database schema init failed:", err.message || err);
+  }
+
   try {
     await ensureProductionDefaultUsers();
   } catch (err) {
