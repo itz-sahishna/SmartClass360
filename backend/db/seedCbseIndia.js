@@ -738,6 +738,8 @@ async function runCbseSeedInternal() {
   const client = await pool.connect();
   try {
     await ensureAppSeedMetaTable(client);
+    await client.query(`DELETE FROM app_seed_meta WHERE key = $1`, [SEED_KEY]);
+    console.log("[seed-cbse] cleared old seed marker");
     if (process.env.FORCE_CBSE_SEED === "true") {
       await client.query(`DELETE FROM app_seed_meta WHERE key = $1`, [SEED_KEY]);
     }
