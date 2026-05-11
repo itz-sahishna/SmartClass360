@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { studentApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { studentApi } from '../../lib/api';
 
 type TimetableData = Record<string, { time: string; subject: string; teacher: string; room: string; className: string; sectionName: string }[]>;
 

@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { studentApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { studentApi } from '../../lib/api';
 
 interface NotificationItem {
   id: string;

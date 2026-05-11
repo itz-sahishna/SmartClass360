@@ -2,9 +2,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Settings, HelpCircle, FileText, Shield, Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '../../../../contexts/ThemeContext';
 
 export default function ProfileDropdown() {
   const { user, logout } = useAuth();

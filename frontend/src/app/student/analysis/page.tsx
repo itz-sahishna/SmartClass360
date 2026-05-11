@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Award, BookOpen, TrendingUp } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import StatCard from '@/components/shared/StatCard';
-import { studentApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import StatCard from '../../components/shared/StatCard';
+import { studentApi } from '../../lib/api';
 
 interface AnalysisData {
   overallScore: number;

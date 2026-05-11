@@ -1,7 +1,7 @@
 'use client';
 
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
+import AppShell from './AppShell';
+import { Panel, PanelHeader } from './Panel';
 
 const roleLabels = {
   admin: 'Admin',

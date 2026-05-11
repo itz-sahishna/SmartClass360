@@ -16,7 +16,7 @@ import {
   ChevronLeft,
   NotebookPen,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 interface SidebarProps {
   role: 'admin' | 'teacher' | 'student';

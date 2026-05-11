@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, TrendingUp, Users } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import StatCard from '@/components/shared/StatCard';
-import { teacherApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import StatCard from '../../components/shared/StatCard';
+import { teacherApi } from '../../lib/api';
 
 interface TeachingAssignment {
   id: string;
@@ -39,14 +39,14 @@ export default function TeacherAnalysisPage() {
   const [selectedAssignment, setSelectedAssignment] = useState('');
   const [rollNumber, setRollNumber] = useState('');
 
-  const loadData = (assignment = selectedAssignment, roll = rollNumber) => {
+  const loadData = useCallback((assignment = selectedAssignment, roll = rollNumber) => {
     teacherApi.getSubjects().then((res) => setSubjects(res.data.data)).catch(console.error);
     teacherApi.getAnalysis({ teacher_assignment_id: assignment || undefined, roll_number: roll || undefined }).then((res) => setData(res.data.data)).catch(console.error);
-  };
+  }, [rollNumber, selectedAssignment]);
 
   useEffect(() => {
     loadData('', '');
-  }, []);
+  }, [loadData]);
 
   return (
     <AppShell

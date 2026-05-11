@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, BrainCircuit, CalendarClock, CheckCircle2, Clock3, BellRing } from 'lucide-react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import StatCard from '@/components/shared/StatCard';
-import { teacherApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import StatCard from '../../components/shared/StatCard';
+import { teacherApi } from '../../lib/api';
 
 interface DashboardData {
   welcome?: string;

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import StatCard from '@/components/shared/StatCard';
-import { studentApi } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import StatCard from '../../components/shared/StatCard';
+import { studentApi } from '../../lib/api';
 import { CalendarCheck2 } from 'lucide-react';
 
 interface AttendanceData {
@@ -22,13 +22,13 @@ export default function StudentAttendancePage() {
   const [note, setNote] = useState('');
   const [message, setMessage] = useState('');
 
-  const loadData = (nextSubject = subjectId) => {
+  const loadData = useCallback((nextSubject = subjectId) => {
     studentApi.getAttendance({ subject_id: nextSubject || undefined }).then((res) => setData(res.data.data)).catch(console.error);
-  };
+  }, [subjectId]);
 
   useEffect(() => {
     loadData('');
-  }, []);
+  }, [loadData]);
 
   return (
     <AppShell

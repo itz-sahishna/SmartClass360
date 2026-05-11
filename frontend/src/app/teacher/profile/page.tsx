@@ -39,9 +39,9 @@ export default function Page() {
 'use client';
 
 import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { teacherApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { teacherApi } from '../../lib/api';
 
 interface ProfileData {
   name: string;

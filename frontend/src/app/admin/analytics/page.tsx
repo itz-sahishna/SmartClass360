@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import StatCard from '@/components/shared/StatCard';
-import { adminApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import StatCard from '../../components/shared/StatCard';
+import { adminApi } from '../../lib/api';
 
 interface AnalyticsData {
   totalStudents: number;

@@ -43,6 +43,13 @@ function persistUploadedFile(uploadedFile) {
   return `/uploads/submissions/${storedFileName}`;
 }
 
+function toPercentScore(row) {
+  const obtained = Number(row?.marks_obtained || 0);
+  const max = Number(row?.max_marks || 0);
+  if (!max) return 0;
+  return Number(((obtained / max) * 100).toFixed(2));
+}
+
 async function getStudentSubjects(userId) {
   return query(
     `
@@ -138,8 +145,8 @@ async function buildCurrentAnalysis(studentUserId) {
     ),
   ]);
 
-  const marks = marksResult.rows.map((row) => Number(row.marks_obtained));
-  const overallScore = average(marks);
+  const normalizedMarks = marksResult.rows.map((row) => toPercentScore(row));
+  const overallScore = average(normalizedMarks);
   const presentCount = attendanceResult.rows.filter((row) => row.status === "present").length;
   const attendancePct = attendanceResult.rows.length
     ? (presentCount / attendanceResult.rows.length) * 100
@@ -147,7 +154,7 @@ async function buildCurrentAnalysis(studentUserId) {
 
   const subjectMarks = subjects.rows.map((subject) => {
     const rows = marksResult.rows.filter((row) => row.subject_id === subject.subject_id);
-    const avg = average(rows.map((row) => Number(row.marks_obtained)));
+    const avg = average(rows.map((row) => toPercentScore(row)));
     return {
       subject: subject.subject_name,
       code: subject.code,
@@ -176,12 +183,12 @@ async function buildCurrentAnalysis(studentUserId) {
     subjectMarks,
     marksOverTime: marksResult.rows.map((row) => ({
       month: new Date(row.date).toLocaleDateString("en-US", { month: "short" }),
-      marks: Number(row.marks_obtained),
+      marks: toPercentScore(row),
       examType: row.exam_type,
     })),
     radarData: [
       { metric: "Attendance", score: Math.round(attendancePct) },
-      { metric: "Assignments", score: Math.round(average(marksResult.rows.filter((row) => row.exam_type === "assignment").map((row) => Number(row.marks_obtained)))) },
+      { metric: "Assignments", score: Math.round(average(marksResult.rows.filter((row) => row.exam_type === "assignment").map((row) => toPercentScore(row)))) },
       { metric: "Exam Scores", score: Math.round(overallScore) },
       { metric: "Consistency", score: Math.round(overallScore >= 80 ? 88 : overallScore >= 60 ? 74 : 58) },
       { metric: "Participation", score: Math.round(attendancePct >= 80 ? 84 : 65) },

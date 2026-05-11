@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { teacherApi } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { teacherApi } from '../../lib/api';
 
 interface TeachingAssignment {
   id: string;
@@ -42,17 +42,17 @@ export default function TeacherMarksPage() {
   const [examType, setExamType] = useState('mid');
   const [draftMarks, setDraftMarks] = useState<Record<string, string>>({});
 
-  const loadData = (assignment = selectedAssignment, type = examType) => {
+  const loadData = useCallback((assignment = selectedAssignment, type = examType) => {
     teacherApi.getSubjects().then((res) => setSubjects(res.data.data)).catch(console.error);
     teacherApi.getMarks({ teacher_assignment_id: assignment || undefined, exam_type: type || undefined }).then((res) => {
       setBoard(res.data.data.board);
       setExams(res.data.data.exams);
     }).catch(console.error);
-  };
+  }, [examType, selectedAssignment]);
 
   useEffect(() => {
     loadData('', 'mid');
-  }, []);
+  }, [loadData]);
 
   const selectedSubject = subjects.find((item) => item.id === selectedAssignment);
 

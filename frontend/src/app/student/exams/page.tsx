@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { studentApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { studentApi } from '../../lib/api';
 
 interface ExamData {
   upcoming: { id: string; subject_name: string; exam_type: string; date: string; class_name: string; section_name: string; max_marks: number }[];

@@ -16,6 +16,13 @@ const router = express.Router();
 
 router.use(auth, roleGuard("teacher"));
 
+function toPercentScore(row) {
+  const obtained = Number(row?.marks_obtained || 0);
+  const max = Number(row?.max_marks || 0);
+  if (!max) return 0;
+  return Number(((obtained / max) * 100).toFixed(2));
+}
+
 async function getTeacherAssignments(userId) {
   return query(
     `
@@ -233,23 +240,23 @@ async function buildPredictionPayload(student, subjectId) {
     ),
   ]);
 
-  const marks = marksResult.rows.map((row) => Number(row.marks_obtained));
+  const normalizedMarks = marksResult.rows.map((row) => toPercentScore(row));
   const assignmentScores = marksResult.rows
     .filter((row) => ["assignment", "quiz", "online_quiz"].includes(row.exam_type))
-    .map((row) => (Number(row.marks_obtained) / Number(row.max_marks)) * 100);
+    .map((row) => toPercentScore(row));
   const examScores = marksResult.rows
     .filter((row) => row.exam_type === "mid")
-    .map((row) => (Number(row.marks_obtained) / Number(row.max_marks)) * 100);
+    .map((row) => toPercentScore(row));
   const finalScores = marksResult.rows
     .filter((row) => row.exam_type === "final")
-    .map((row) => (Number(row.marks_obtained) / Number(row.max_marks)) * 100);
+    .map((row) => toPercentScore(row));
   const presentCount = attendanceResult.rows.filter((row) => row.status === "present").length;
   const attendancePct = attendanceResult.rows.length
     ? (presentCount / attendanceResult.rows.length) * 100
     : 0;
   const pastPerformance = historicalResult.rows[0]
     ? Number(historicalResult.rows[0].avg_marks)
-    : average(marks);
+    : average(normalizedMarks);
 
   return {
     student,
@@ -257,13 +264,13 @@ async function buildPredictionPayload(student, subjectId) {
       roll_no: student.roll_number,
       assignment_score: Number(average(assignmentScores).toFixed(2)),
       exam_score: Number(average(examScores).toFixed(2)),
-      final_marks: Number(average(finalScores.length ? finalScores : marks).toFixed(2)),
-      avg_marks: Number(average(marks).toFixed(2)),
+      final_marks: Number(average(finalScores.length ? finalScores : normalizedMarks).toFixed(2)),
+      avg_marks: Number(average(normalizedMarks).toFixed(2)),
       attendance: Number(attendancePct.toFixed(2)),
       past_performance: Number(pastPerformance.toFixed(2)),
     },
     summary: {
-      marks,
+      marks: normalizedMarks,
       attendancePct,
       submissionCount: submissionsResult.rows.length,
     },

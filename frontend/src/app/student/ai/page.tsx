@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { AlertCircle, Bot, RefreshCw, Send, Sparkles, User } from 'lucide-react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel } from '@/components/shared/Panel';
-import { useAuth } from '@/contexts/AuthContext';
-import { aiApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel } from '../../components/shared/Panel';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { aiApi } from '../../lib/api';
 
 interface ChatMessage {
   role: 'user' | 'ai';

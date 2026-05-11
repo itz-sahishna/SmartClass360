@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useEffect } from 'react';
 import { Eye, EyeOff, Lock, User, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 import AnimatedCreatures from './AnimatedCreatures';
 
 export default function LoginForm() {

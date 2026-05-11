@@ -3,9 +3,9 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Menu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/shared/Sidebar';
-import ProfileDropdown from '@/components/shared/ProfileDropdown';
-import { useAuth } from '@/contexts/AuthContext';
+import Sidebar from './Sidebar';
+import ProfileDropdown from './ProfileDropdown';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 interface AppShellProps {
   role: 'admin' | 'teacher' | 'student';

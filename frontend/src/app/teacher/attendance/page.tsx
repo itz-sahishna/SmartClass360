@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { teacherApi } from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { teacherApi } from '../../lib/api';
 
 interface TimetableSlot {
   id: string;
@@ -39,7 +39,7 @@ interface AttendancePayload {
 }
 
 export default function TeacherAttendancePage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [filters, setFilters] = useState<AttendancePayload>({ subjects: [], students: [] });
   const [selectedAssignment, setSelectedAssignment] = useState('');
   const [selectedDate, setSelectedDate] = useState(today);
@@ -47,7 +47,7 @@ export default function TeacherAttendancePage() {
   const [sort, setSort] = useState('default');
   const [statuses, setStatuses] = useState<Record<string, string>>({});
 
-  const loadData = (nextAssignment = selectedAssignment, nextTimetable = selectedTimetable, nextDate = selectedDate, nextSort = sort) => {
+  const loadData = useCallback((nextAssignment = selectedAssignment, nextTimetable = selectedTimetable, nextDate = selectedDate, nextSort = sort) => {
     teacherApi
       .getAttendance({
         teacher_assignment_id: nextAssignment || undefined,
@@ -68,11 +68,11 @@ export default function TeacherAttendancePage() {
         );
       })
       .catch(console.error);
-  };
+  }, [selectedAssignment, selectedDate, selectedTimetable, sort]);
 
   useEffect(() => {
     loadData('', '', today, 'default');
-  }, []);
+  }, [loadData, today]);
 
   const selectedSubject = useMemo(
     () => filters.subjects.find((item) => item.id === selectedAssignment) || null,

@@ -1,7 +1,7 @@
 'use client';
-import { useAuth } from '@/contexts/AuthContext';
-import Sidebar from '@/components/shared/Sidebar';
-import ProfileDropdown from '@/components/shared/ProfileDropdown';
+import { useAuth } from '../../../../contexts/AuthContext';
+import Sidebar from '../../components/shared/Sidebar';
+import ProfileDropdown from '../../components/shared/ProfileDropdown';
 
 export default function Page() {
   const { user } = useAuth();

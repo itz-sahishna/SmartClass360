@@ -1,7 +1,7 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import ModuleInfoPage from '@/components/shared/ModuleInfoPage';
+import ModuleInfoPage from '../../components/shared/ModuleInfoPage';
 
 const roles = ['admin', 'teacher', 'student'] as const;
 

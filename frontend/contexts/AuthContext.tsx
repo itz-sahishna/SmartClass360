@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/api';
+import { authApi } from '../src/app/lib/api';
 
 interface User {
   id: string;

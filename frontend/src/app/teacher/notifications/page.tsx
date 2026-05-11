@@ -40,9 +40,9 @@ export default function Page() {
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { teacherApi } from '@/lib/api';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { teacherApi } from '../../lib/api';
 
 interface NotificationItem {
   id: string;

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AppShell from '@/components/shared/AppShell';
-import { Panel, PanelHeader } from '@/components/shared/Panel';
-import { teacherApi } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import AppShell from '../../components/shared/AppShell';
+import { Panel, PanelHeader } from '../../components/shared/Panel';
+import { teacherApi } from '../../lib/api';
 
 interface TeachingAssignment {
   id: string;
@@ -104,7 +104,7 @@ export default function TeacherAssignmentsPage() {
     }[],
   });
 
-  const loadData = (focusId?: string) => {
+  const loadData = useCallback((focusId?: string) => {
     teacherApi.getAssignments().then((res) => {
       const nextAssignments = res.data.data;
       setAssignments(nextAssignments);
@@ -119,11 +119,11 @@ export default function TeacherAssignmentsPage() {
 
     teacherApi.getSubjects().then((res) => setTeachingAssignments(res.data.data)).catch(console.error);
     teacherApi.getMaterials().then((res) => setMaterials(res.data.data)).catch(console.error);
-  };
+  }, [selectedAssignmentId]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   return (
     <AppShell
