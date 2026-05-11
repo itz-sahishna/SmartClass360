@@ -11,6 +11,7 @@ const teacherRoutes = require("./routes/teacherRoutes");
 const aiRoutes = require("./routes/ai");
 const mlRoutes = require("./routes/ml");
 const errorHandler = require("./middleware/errorHandler");
+const { ensureProductionDefaultUsers } = require("../db/bootstrapProductionUsers");
 
 const app = express();
 const uploadsDir = path.join(__dirname, "..", "uploads");
@@ -43,6 +44,16 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    await ensureProductionDefaultUsers();
+  } catch (err) {
+    console.error("[bootstrap] Default user seed failed:", err.message || err);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
