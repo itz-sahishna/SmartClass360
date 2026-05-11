@@ -62,7 +62,9 @@ async function startServer() {
 
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    void runCbseSeedIfNeeded();
+    runCbseSeedIfNeeded()
+  .then(() => console.log("[seed-cbse] finished"))
+  .catch((err) => console.error("[seed-cbse] failed", err));
   });
 }
 
