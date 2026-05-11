@@ -13,6 +13,7 @@ const mlRoutes = require("./routes/ml");
 const errorHandler = require("./middleware/errorHandler");
 const { ensureDatabaseSchema } = require("../db/initializeSchema");
 const { ensureProductionDefaultUsers } = require("../db/bootstrapProductionUsers");
+const { corsOriginDelegate } = require("./config/allowedOrigins");
 
 const app = express();
 const uploadsDir = path.join(__dirname, "..", "uploads");
@@ -23,7 +24,7 @@ if (!fs.existsSync(uploadsDir)) {
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: corsOriginDelegate,
     credentials: true,
   })
 );
