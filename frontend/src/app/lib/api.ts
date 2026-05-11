@@ -3,25 +3,6 @@ import axios from "axios";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-// #region agent log
-fetch("http://127.0.0.1:7586/ingest/52c81873-b59d-4be5-b957-ad89573d8c54", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-Debug-Session-Id": "667dd8",
-  },
-  body: JSON.stringify({
-    sessionId: "667dd8",
-    runId: "pre-fix",
-    hypothesisId: "H5",
-    location: "frontend/src/app/lib/api.ts:6",
-    message: "Frontend API base URL resolved",
-    data: { apiUrl: API_URL, hasEnvApiUrl: Boolean(process.env.NEXT_PUBLIC_API_URL) },
-    timestamp: Date.now(),
-  }),
-}).catch(() => {});
-// #endregion
-
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,

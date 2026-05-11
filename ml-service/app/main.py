@@ -5,7 +5,6 @@ import numpy as np
 import joblib
 import os
 import json
-import time
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="SmartClass 360 ML Service")
@@ -27,27 +26,6 @@ LABEL_MAP = {
 
 MODEL_PATH = "models/rf_model.pkl"
 model = joblib.load(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
-
-def debug_log(hypothesis_id: str, location: str, message: str, data: dict):
-    # #region agent log
-    with open("debug-667dd8.log", "a", encoding="utf-8") as f:
-        f.write(json.dumps({
-            "sessionId": "667dd8",
-            "runId": "pre-fix",
-            "hypothesisId": hypothesis_id,
-            "location": location,
-            "message": message,
-            "data": data,
-            "timestamp": int(time.time() * 1000)
-        }) + "\n")
-    # #endregion
-
-debug_log(
-    "H3",
-    "ml-service/app/main.py:47",
-    "ML model load status",
-    {"modelPath": MODEL_PATH, "modelExists": os.path.exists(MODEL_PATH), "modelLoaded": model is not None}
-)
 
 # ---------------- REQUEST MODELS ---------------- #
 
@@ -106,12 +84,6 @@ def root():
 # ✅ Individual prediction
 @app.post("/predict")
 def predict(student: StudentData):
-    debug_log(
-        "H3",
-        "ml-service/app/main.py:106",
-        "ML predict invoked",
-        {"rollNo": student.roll_no, "modelLoaded": model is not None}
-    )
 
     features = [[
         student.assignment_score,
