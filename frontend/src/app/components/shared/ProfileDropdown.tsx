@@ -26,6 +26,9 @@ export default function ProfileDropdown() {
   if (!user) return null;
 
   const profilePath = `/${user.role}/profile`;
+  // #region agent log
+  fetch('http://127.0.0.1:7586/ingest/52c81873-b59d-4be5-b957-ad89573d8c54',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'addc84'},body:JSON.stringify({sessionId:'addc84',runId:'initial',hypothesisId:'H2',location:'src/app/components/shared/ProfileDropdown.tsx:29',message:'Profile dropdown rendered with role',data:{role:user.role,profilePath},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const menuItems = [
     { icon: User, label: 'Profile', onClick: () => router.push(profilePath) },
@@ -71,7 +74,12 @@ export default function ProfileDropdown() {
                 return (
                   <button
                     key={index}
-                    onClick={() => { item.onClick(); setIsOpen(false); }}
+                    onClick={() => {
+                      // #region agent log
+                      fetch('http://127.0.0.1:7586/ingest/52c81873-b59d-4be5-b957-ad89573d8c54',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'addc84'},body:JSON.stringify({sessionId:'addc84',runId:'initial',hypothesisId:'H2',location:'src/app/components/shared/ProfileDropdown.tsx:77',message:'Profile menu item clicked',data:{label:item.label,role:user.role},timestamp:Date.now()})}).catch(()=>{});
+                      // #endregion
+                      item.onClick(); setIsOpen(false);
+                    }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-primary rounded-lg transition-colors"
                   >
                     <Icon size={18} />

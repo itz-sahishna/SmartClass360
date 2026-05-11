@@ -71,6 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       const { token: newToken, user: newUser } = res.data;
+      // #region agent log
+      fetch('http://127.0.0.1:7586/ingest/52c81873-b59d-4be5-b957-ad89573d8c54',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'addc84'},body:JSON.stringify({sessionId:'addc84',runId:'initial',hypothesisId:'H1',location:'contexts/AuthContext.tsx:74',message:'Login response role captured',data:{role:newUser?.role,hasToken:Boolean(newToken)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
 
       // store
       setToken(newToken);
