@@ -13,6 +13,7 @@ const mlRoutes = require("./routes/ml");
 const errorHandler = require("./middleware/errorHandler");
 const { ensureDatabaseSchema } = require("../db/initializeSchema");
 const { ensureProductionDefaultUsers } = require("../db/bootstrapProductionUsers");
+const { runCbseSeedIfNeeded } = require("../db/seedCbseIndia");
 const { corsOriginDelegate } = require("./config/allowedOrigins");
 
 const app = express();
@@ -61,6 +62,7 @@ async function startServer() {
 
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    void runCbseSeedIfNeeded();
   });
 }
 
