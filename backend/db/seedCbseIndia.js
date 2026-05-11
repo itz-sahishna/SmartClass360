@@ -129,6 +129,27 @@ function hashStr(s) {
   for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 }
+const usedPhones = new Set();
+
+async function generateUniquePhone(client, prefix = "9") {
+  while (true) {
+    const phone =
+      prefix +
+      Math.floor(100000000 + Math.random() * 900000000).toString();
+
+    if (usedPhones.has(phone)) continue;
+
+    const exists = await client.query(
+      "SELECT 1 FROM users WHERE phone = $1 LIMIT 1",
+      [phone]
+    );
+
+    if (!exists.rows.length) {
+      usedPhones.add(phone);
+      return phone;
+    }
+  }
+}
 
 async function ensureAppSeedMetaTable(client) {
   await client.query(`
@@ -239,7 +260,7 @@ async function createTeachers(client, demoHash) {
       const fn = pick(TEACHER_FIRST, ti);
       const ln = pick(LAST_NAMES, ti + 5);
       const email = `faculty.${code.replace(/[^a-zA-Z0-9]/g, "")}.c${copy}.t${ti}@vidyaniketan.edu.in`;
-      const phone = `9${String(1000000000 + ti).slice(0, 9)}`;
+      const phone = await generateUniquePhone(client, "9");
       ti += 1;
       const profile = {
         gender: copy === 0 ? "Female" : "Male",
@@ -346,7 +367,7 @@ async function createStudents(client, sectionKeys, demoHash) {
       const ln = pick(LAST_NAMES, si + i + 2);
       const roll = `2526${grade}${sec}${String(i).padStart(2, "0")}`;
       const email = `student.g${grade}${sec.toLowerCase()}.${String(i).padStart(2, "0")}@vidyaniketan.edu.in`;
-      const phone = `8${String(820000000 + si).slice(0, 9)}`;
+      const phone = await generateUniquePhone(client, "8");
       const uid = `user-stu-${roll}`;
       const stid = `stu-${roll}`;
       const mother = pick(MOTHER_NAMES, si);
